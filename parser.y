@@ -22,9 +22,9 @@ using namespace std;
 
 %%
 snazzle:
-	INT snazzle      { cout << "bison found an int: " << $1 << endl; }
-	| FLOAT snazzle  { cout << "bison found a float: " << $1 << endl; }
-	| STRING snazzle { cout << "bison found a string: " << $1 << endl; }
+	snazzle INT      { cout << "bison found an int: " << $2 << endl; }
+	| snazzle FLOAT  { cout << "bison found a float: " << $2 << endl; }
+	| snazzle STRING { cout << "bison found a string: " << $2 << endl; }
 	| INT            { cout << "bison found an int: " << $1 << endl; }
 	| FLOAT          { cout << "bison found a float: " << $1 << endl; }
 	| STRING         { cout << "bison found a string: " << $1 << endl; }
