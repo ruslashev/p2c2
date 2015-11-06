@@ -2,8 +2,6 @@
 
 int main()
 {
-  puts("sup");
-
   return 0;
 }
 

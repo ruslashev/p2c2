@@ -1,3 +1,6 @@
 *.o
 p2c2
+lexer.cc
+parser.cc
+parser.hh
 
