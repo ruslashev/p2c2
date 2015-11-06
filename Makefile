@@ -1,4 +1,4 @@
-OBJS = .lexer.o .parser.o
+OBJS = .lexer.o .parser.o .main.o
 CXX = g++
 CXXFLAGS = -Wall -Wextra -g -std=c++0x
 EXECNAME = p2c2
@@ -8,7 +8,8 @@ all:
 	flex -o lexer.cc lexer.l
 	$(CXX) -c -o .parser.o parser.cc $(CXXFLAGS)
 	$(CXX) -c -o .lexer.o lexer.cc $(CXXFLAGS)
-	$(CXX) -o p2c2 .lexer.o .parser.o -lfl
+	$(CXX) -c -o .main.o main.cc $(CXXFLAGS)
+	$(CXX) -o p2c2 .lexer.o .parser.o .main.o
 	./p2c2
 
 clean:
