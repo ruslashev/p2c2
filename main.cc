@@ -14,9 +14,7 @@ int main()
 	if (!yyin)
 		yyerror("can't open file \"input\"");
 
-	do {
-		yyparse();
-	} while (!feof(yyin));
+  yyparse();
 }
 
 void yyerror(const char *s)
