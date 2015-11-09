@@ -11,7 +11,7 @@
 
 [ \t\n\r]                 /* ignore */;
 "+"                       { return PLUS; }
-"~"                       { return TILDE; }
+"-"                       { return MINUS; }
 "*"                       { return ASTERISK; }
 "/"                       { return SLASH; }
 "="                       { return EQUAL; }
@@ -67,6 +67,7 @@
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
 [a-zA-Z][a-zA-Z0-9]*      { yylval.str = strdup(yytext); return IDENTIFIER; }
+[0-9]                     { yylval.digit = yytext[0]; return DIGIT; }
 .                         ;
 
 %%
