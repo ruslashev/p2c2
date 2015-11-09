@@ -7,6 +7,10 @@
 #include "parser.hh"
 %}
 
+letter [a-z]
+digit [0-9]
+identifier {letter}("_"({letter}|{digit}))*
+
 %%
 
 [ \t\n\r]                 /* ignore */;
@@ -23,13 +27,13 @@
 ","                       { return COMMA; }
 ":"                       { return COLON; }
 ";"                       { return SEMICOLON; }
-"\""                      { return QUOTE; }
+"'"                       { return QUOTE; }
 "("                       { return LPAREN; }
 ")"                       { return RPAREN; }
-"<>"                      { return NEQUAL; }
+"<>"                      { return LTGT; }
 "<="                      { return LTE; }
 ">="                      { return GTE; }
-":="                      { return ASSIGN; }
+":="                      { return COLEQUAL; }
 ".."                      { return ELLIPSIS; }
 "and"                     { return AND; }
 "array"                   { return ARRAY; }
@@ -53,6 +57,7 @@
 "not"                     { return NOT; }
 "of"                      { return OF; }
 "or"                      { return OR; }
+"otherwise"               { return OTHERWISE; }
 "packed"                  { return PACKED; }
 "procedure"               { return PROCEDURE; }
 "program"                 { return PROGRAM; }
@@ -66,9 +71,13 @@
 "var"                     { return VAR; }
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
-[a-zA-Z][a-zA-Z0-9]*      { yylval.str = strdup(yytext); return IDENTIFIER; }
+{identifier}              { yylval.str = strdup(yytext);
+                            return IDENTIFIER;
+                          }
 [0-9]                     { yylval.digit = yytext[0]; return DIGIT; }
-.                         ;
+.                         { printf("unknown character %c\n", *yytext); }
 
 %%
+
+// vim: et:ts=2:sw=2
 
