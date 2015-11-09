@@ -33,7 +33,7 @@
 ".."                      { return ELLIPSIS; }
 "and"                     { return AND; }
 "array"                   { return ARRAY; }
-"begin"                   { return BEGIN; }
+"begin"                   { return TOKBEGIN; }
 "case"                    { return CASE; }
 "const"                   { return CONST; }
 "div"                     { return DIV; }
@@ -41,7 +41,7 @@
 "downto"                  { return DOWNTO; }
 "else"                    { return ELSE; }
 "end"                     { return END; }
-"file"                    { return FILE; }
+"file"                    { return TOKFILE; }
 "for"                     { return FOR; }
 "function"                { return FUNCTION; }
 "goto"                    { return GOTO; }
@@ -66,8 +66,7 @@
 "var"                     { return VAR; }
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
-[a-zA-Z][a-zA-Z0-9]*      { yylval.sval = strdup(yytext); return IDENTIFIER; }
-<<EOF>>                   { return EOF; }
+[a-zA-Z][a-zA-Z0-9]*      { yylval.str = strdup(yytext); return IDENTIFIER; }
 .                         ;
 
 %%

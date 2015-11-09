@@ -7,15 +7,15 @@ extern "C" int yylex();
 %}
 
 %union {
-	std::string sval;
+	char *str;
 }
 
 %token PLUS TILDE ASTERISK SLASH EQUAL LT GT LBRACKET RBRACKET DOT COMMA COLON
 %token SEMICOLON QUOTE LPAREN RPAREN NEQUAL LTE GTE ASSIGN ELLIPSIS
-%token AND ARRAY BEGIN CASE CONST DIV DO DOWNTO ELSE END FILE FOR FUNCTION GOTO
+%token AND ARRAY TOKBEGIN CASE CONST DIV DO DOWNTO ELSE END TOKFILE FOR FUNCTION GOTO
 %token IF IN LABEL MOD NIL NOT OF OR PACKED PROCEDURE PROGRAM RECORD REPEAT SET
-%token THEN TO TYPE UNTIL VAR WHILE WITH EOF
-%token <sval> IDENTIFIER
+%token THEN TO TYPE UNTIL VAR WHILE WITH
+%token <str> IDENTIFIER
 
 %%
 
@@ -43,7 +43,7 @@ program:
   | program ELLIPSIS    { printf("ELLIPSIS\n"); }
   | program AND         { printf("AND\n"); }
   | program ARRAY       { printf("ARRAY\n"); }
-  | program BEGIN       { printf("BEGIN\n"); }
+  | program TOKBEGIN    { printf("TOKBEGIN\n"); }
   | program CASE        { printf("CASE\n"); }
   | program CONST       { printf("CONST\n"); }
   | program DIV         { printf("DIV\n"); }
@@ -51,7 +51,7 @@ program:
   | program DOWNTO      { printf("DOWNTO\n"); }
   | program ELSE        { printf("ELSE\n"); }
   | program END         { printf("END\n"); }
-  | program FILE        { printf("FILE\n"); }
+  | program TOKFILE     { printf("TOKFILE\n"); }
   | program FOR         { printf("FOR\n"); }
   | program FUNCTION    { printf("FUNCTION\n"); }
   | program GOTO        { printf("GOTO\n"); }
@@ -77,7 +77,63 @@ program:
   | program WHILE       { printf("WHILE\n"); }
   | program WITH        { printf("WITH\n"); }
   | program IDENTIFIER  { printf("IDENTIFIER: \"%s\"\n", $2); }
-  | EOF
+  | PLUS                { printf("PLUS\n"); }
+  | TILDE               { printf("TILDE\n"); }
+  | ASTERISK            { printf("ASTERISK\n"); }
+  | SLASH               { printf("SLASH\n"); }
+  | EQUAL               { printf("EQUAL\n"); }
+  | LT                  { printf("LT\n"); }
+  | GT                  { printf("GT\n"); }
+  | LBRACKET            { printf("LBRACKET\n"); }
+  | RBRACKET            { printf("RBRACKET\n"); }
+  | DOT                 { printf("DOT\n"); }
+  | COMMA               { printf("COMMA\n"); }
+  | COLON               { printf("COLON\n"); }
+  | SEMICOLON           { printf("SEMICOLON\n"); }
+  | QUOTE               { printf("QUOTE\n"); }
+  | LPAREN              { printf("LPAREN\n"); }
+  | RPAREN              { printf("RPAREN\n"); }
+  | NEQUAL              { printf("NEQUAL\n"); }
+  | LTE                 { printf("LTE\n"); }
+  | GTE                 { printf("GTE\n"); }
+  | ASSIGN              { printf("ASSIGN\n"); }
+  | ELLIPSIS            { printf("ELLIPSIS\n"); }
+  | AND                 { printf("AND\n"); }
+  | ARRAY               { printf("ARRAY\n"); }
+  | TOKBEGIN            { printf("TOKBEGIN\n"); }
+  | CASE                { printf("CASE\n"); }
+  | CONST               { printf("CONST\n"); }
+  | DIV                 { printf("DIV\n"); }
+  | DO                  { printf("DO\n"); }
+  | DOWNTO              { printf("DOWNTO\n"); }
+  | ELSE                { printf("ELSE\n"); }
+  | END                 { printf("END\n"); }
+  | TOKFILE             { printf("TOKFILE\n"); }
+  | FOR                 { printf("FOR\n"); }
+  | FUNCTION            { printf("FUNCTION\n"); }
+  | GOTO                { printf("GOTO\n"); }
+  | IF                  { printf("IF\n"); }
+  | IN                  { printf("IN\n"); }
+  | LABEL               { printf("LABEL\n"); }
+  | MOD                 { printf("MOD\n"); }
+  | NIL                 { printf("NIL\n"); }
+  | NOT                 { printf("NOT\n"); }
+  | OF                  { printf("OF\n"); }
+  | OR                  { printf("OR\n"); }
+  | PACKED              { printf("PACKED\n"); }
+  | PROCEDURE           { printf("PROCEDURE\n"); }
+  | PROGRAM             { printf("PROGRAM\n"); }
+  | RECORD              { printf("RECORD\n"); }
+  | REPEAT              { printf("REPEAT\n"); }
+  | SET                 { printf("SET\n"); }
+  | THEN                { printf("THEN\n"); }
+  | TO                  { printf("TO\n"); }
+  | TYPE                { printf("TYPE\n"); }
+  | UNTIL               { printf("UNTIL\n"); }
+  | VAR                 { printf("VAR\n"); }
+  | WHILE               { printf("WHILE\n"); }
+  | WITH                { printf("WITH\n"); }
+  | IDENTIFIER          { printf("IDENTIFIER: \"%s\"\n", $1); }
   ;
 
 %%
