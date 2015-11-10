@@ -1,4 +1,5 @@
 %{
+#include <string>
 #include <fstream>
 #include <cstring>
 
@@ -15,7 +16,7 @@ extern "C" int yylex();
   char *strv;
   char *labelv;
   /* (^) used in lex. (v) used in bison */
-  char *string;
+  std::string *string;
   char *label;
 }
 
@@ -31,6 +32,12 @@ extern "C" int yylex();
 %token LABEL LABELCOMMA LABELSEMICOLON;
 %token <labelv> LABELN;
 
+%type <string> identifer;
+%type <string> constant;
+%type <string> number;
+%type <string> string;
+%type <string> sign;
+
 %start program
 
 %%
@@ -38,11 +45,11 @@ extern "C" int yylex();
 program: program term
        | term;
 
-term: label;
+term: constant_definition_part;
 
-identifer: IDENTIFIER { printf("ident: <%s>\n", $1); };
-number: NUMBER { printf("num: <%s>\n", $1); };
-string: STRING { printf("str: <%s>\n", $1); };
+identifer: IDENTIFIER { $$ = new std::string($1); printf("ident: <%s>\n", $1); };
+number: NUMBER { $$ = new std::string($1); printf("num: <%s>\n", $1); };
+string: STRING { $$ = new std::string($1); printf("str: <%s>\n", $1); };
 
 /*
 block: label_declaration_part
@@ -53,9 +60,22 @@ block: label_declaration_part
        statement_part ;
 */
 
-label: LABEL label_list LABELSEMICOLON;
+label_declaration_part: LABEL label_list LABELSEMICOLON;
 label_list: label_list LABELCOMMA LABELN
           | LABELN;
+
+constant_definition_part: CONST constant_definition_list;
+constant_definition_list: constant_definition_list constant_definition
+                        | constant_definition;
+constant_definition: identifer EQUAL constant SEMICOLON
+                   { printf("const %s = %s\n", $1->c_str(), $3->c_str()); };
+constant: sign number { $$ = new std::string(*($1)); $$->append(*($2)); }
+        | sign identifer { $$ = new std::string(*($1)); $$->append(*($2)); }
+        | number { $$ = new std::string(*($1)); }
+        | identifer { $$ = new std::string(*($1)); }
+        | string { $$ = new std::string(*($1)); };
+sign: PLUS { $$ = new std::string($1, strlen($1)); }
+    | MINUS { $$ = new std::string($1, strlen($1)); };
 
 %%
 

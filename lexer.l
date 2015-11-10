@@ -5,6 +5,7 @@
 
 %{
 #define YY_DECL extern "C" int yylex()
+#include <string>
 #include "parser.hh" /* all the tokens and yylval */
 #include "main.hh" /* yyerror */
 %}

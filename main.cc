@@ -1,4 +1,5 @@
 #include "main.hh"
+#include <string>
 #include "parser.hh"
 
 #include <cstdio>
