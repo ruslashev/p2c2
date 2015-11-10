@@ -10,6 +10,7 @@
 %}
 
 %x string
+%x comment
 
 letter [a-z]
 identifier {letter}("_"({letter}|{digit}))*
@@ -94,10 +95,14 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 <string>"'"               { BEGIN(INITIAL); }
 <string>.                 { printf("unhandled character in string: %c\n", *yytext); }
 
+"{"|"(*"                  { BEGIN(comment); }
+<comment>"}"|"*)"         { BEGIN(INITIAL); }
+<comment>.                /* eat */
+
 [a-z][_a-z0-9]*           { yylval.identv = strdup(yytext); return IDENTIFIER; }
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
-[ \t\r]*                  /* ignore */;
+[ \t\r]*                  /* ignore */
 [\n]                      { yylineno++; }
 .                         { printf("unknown character %c\n", *yytext); }
 
