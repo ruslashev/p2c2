@@ -10,8 +10,9 @@
 
 letter [a-z]
 identifier {letter}("_"({letter}|{digit}))*
+
 digit [0-9]
-int digit+
+digit_sequence {digit}+
 
 %%
 
@@ -73,10 +74,8 @@ int digit+
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
 
-[a-z][_a-z0-9]*           { yylval.strv = strdup(yytext);
-                            return IDENTIFIER; }
-[0-9]+                    { yylval.intv = atoi(yytext); return INT; }
-
+[a-z][_a-z0-9]*           { yylval.strv = strdup(yytext); return IDENTIFIER; }
+{digit_sequence}          { yylval.numberv = strdup(yytext); return NUMBER; }
 
 [ \t\r]*                  /* ignore */;
 [\n]                      { yylineno++; }
