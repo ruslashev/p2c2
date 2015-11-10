@@ -8,30 +8,37 @@ extern "C" int yylex();
 %}
 
 %union {
-  char *str;
-  short digit;
-  char *number;
+  char *strv;
+  int intv;
+  char *opv;
 }
 
-%token PLUS MINUS ASTERISK SLASH EQUAL LT GT LBRACKET RBRACKET DOT COMMA COLON
+%token PLUS MINUS /* ASTERISK */ SLASH EQUAL LT GT LBRACKET RBRACKET DOT COMMA COLON
 %token SEMICOLON QUOTE LPAREN RPAREN LTGT LTE GTE COLEQUAL ELLIPSIS
 %token AND ARRAY TOKBEGIN CASE CONST DIV DO DOWNTO ELSE END TOKFILE FOR FUNCTION
 %token GOTO IF IN LABEL MOD NIL NOT OF OR OTHERWISE PACKED PROCEDURE PROGRAM
 %token RECORD REPEAT SET THEN TO TYPE UNTIL VAR WHILE WITH
 
-%token <str> IDENTIFIER
-%token <digit> DIGIT;
-
-%type <number> signed_number;
-
 %start program
+
+%token <strv> IDENTIFIER
+%token <intv> INT;
+%type <intv> number;
+%left PLUS
+%left ASTERISK
 
 %%
 
-program: program signed_number
-       | signed_number
+program:
+       | number { printf("result: %d\n", $1); }
        ;
 
+number: INT { $$ = $1; }
+      | number PLUS number { $$ = $1 + $3; }
+      | number ASTERISK number { $$ = $1 * $3; }
+      ;
+
+/*
 signed_number: signed_integer { puts("got si"); }
              | signed_real  { puts("got sr"); }
              ;
@@ -57,6 +64,7 @@ scale_factor: sign digit_sequence
 digit_sequence: digit_sequence DIGIT
               | DIGIT
               ;
+*/
 
 %%
 

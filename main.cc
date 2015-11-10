@@ -19,7 +19,9 @@ int main()
 
 void yyerror(const char *s)
 {
-	printf("error: %s\n", s);
+  extern char *yytext;
+  extern int yylineno; // from lexer
+	printf("error: %s at symbol \"%s\" on line %d\n", s, yytext, yylineno);
 	exit(0);
 }
 

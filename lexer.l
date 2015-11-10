@@ -1,6 +1,7 @@
 %option caseless
 %option noyywrap
 %option nounput
+%option yylineno
 
 %{
 #define YY_DECL extern "C" int yylex()
@@ -8,33 +9,33 @@
 %}
 
 letter [a-z]
-digit [0-9]
 identifier {letter}("_"({letter}|{digit}))*
+digit [0-9]
+int digit+
 
 %%
 
-[ \t\n\r]                 /* ignore */;
-"+"                       { return PLUS; }
-"-"                       { return MINUS; }
-"*"                       { return ASTERISK; }
-"/"                       { return SLASH; }
-"="                       { return EQUAL; }
-"<"                       { return LT; }
-">"                       { return GT; }
-"["                       { return LBRACKET; }
-"]"                       { return RBRACKET; }
-"."                       { return DOT; }
-","                       { return COMMA; }
-":"                       { return COLON; }
-";"                       { return SEMICOLON; }
-"'"                       { return QUOTE; }
-"("                       { return LPAREN; }
-")"                       { return RPAREN; }
-"<>"                      { return LTGT; }
-"<="                      { return LTE; }
-">="                      { return GTE; }
-":="                      { return COLEQUAL; }
-".."                      { return ELLIPSIS; }
+"+"                       { yylval.opv = strdup(yytext); return PLUS; }
+"-"                       { yylval.opv = strdup(yytext); return MINUS; }
+"*"                       { yylval.opv = strdup(yytext); return ASTERISK; }
+"/"                       { yylval.opv = strdup(yytext); return SLASH; }
+"="                       { yylval.opv = strdup(yytext); return EQUAL; }
+"<"                       { yylval.opv = strdup(yytext); return LT; }
+">"                       { yylval.opv = strdup(yytext); return GT; }
+"["                       { yylval.opv = strdup(yytext); return LBRACKET; }
+"]"                       { yylval.opv = strdup(yytext); return RBRACKET; }
+"."                       { yylval.opv = strdup(yytext); return DOT; }
+","                       { yylval.opv = strdup(yytext); return COMMA; }
+":"                       { yylval.opv = strdup(yytext); return COLON; }
+";"                       { yylval.opv = strdup(yytext); return SEMICOLON; }
+"'"                       { yylval.opv = strdup(yytext); return QUOTE; }
+"("                       { yylval.opv = strdup(yytext); return LPAREN; }
+")"                       { yylval.opv = strdup(yytext); return RPAREN; }
+"<>"                      { yylval.opv = strdup(yytext); return LTGT; }
+"<="                      { yylval.opv = strdup(yytext); return LTE; }
+">="                      { yylval.opv = strdup(yytext); return GTE; }
+":="                      { yylval.opv = strdup(yytext); return COLEQUAL; }
+".."                      { yylval.opv = strdup(yytext); return ELLIPSIS; }
 "and"                     { return AND; }
 "array"                   { return ARRAY; }
 "begin"                   { return TOKBEGIN; }
@@ -71,10 +72,14 @@ identifier {letter}("_"({letter}|{digit}))*
 "var"                     { return VAR; }
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
-{identifier}              { yylval.str = strdup(yytext);
-                            return IDENTIFIER;
-                          }
-[0-9]                     { yylval.digit = yytext[0]; return DIGIT; }
+
+[a-z][_a-z0-9]*           { yylval.strv = strdup(yytext);
+                            return IDENTIFIER; }
+[0-9]+                    { yylval.intv = atoi(yytext); return INT; }
+
+
+[ \t\r]*                  /* ignore */;
+[\n]                      { yylineno++; }
 .                         { printf("unknown character %c\n", *yytext); }
 
 %%
