@@ -9,10 +9,11 @@ extern "C" int yylex();
 %}
 
 %union {
-  char *strv;
+  char *identv;
   char *numberv;
   /* char *labelv; */
   char *opv;
+  char *strv;
   /* char letterv; */
   /* char digitv; */
   /* (^) used in lex. (v) used in bison */
@@ -25,10 +26,9 @@ extern "C" int yylex();
 %token GOTO IF IN LABEL MOD NIL NOT OF OR OTHERWISE PACKED PROCEDURE PROGRAM
 %token RECORD REPEAT SET THEN TO TYPE UNTIL VAR WHILE WITH
 
-%token <strv> IDENTIFIER;
+%token <identv> IDENTIFIER;
 %token <numberv> NUMBER;
-%token <labelv> LABELN;
-%token <digitv> DIGIT;
+%token <strv> STRING;
 
 %start program
 
@@ -37,11 +37,13 @@ extern "C" int yylex();
 program: program term
        | term;
 
-term: identifer | number;
+term: identifer | number | string;
 
 identifer: IDENTIFIER { printf("ident: <%s>\n", $1); };
 
 number: NUMBER { printf("num: <%s>\n", $1); };
+
+string: STRING { printf("str: <%s>\n", $1); };
 
 /*
 string: QUOTE string_elements QUOTE { printf("str: <%%s>\n"); }

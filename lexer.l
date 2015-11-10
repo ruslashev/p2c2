@@ -9,6 +9,8 @@
 #include "main.hh" /* yyerror */
 %}
 
+%x string
+
 letter [a-z]
 identifier {letter}("_"({letter}|{digit}))*
 
@@ -26,6 +28,8 @@ digit [0-9]
 
 label {digit_sequence}
 
+string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
+
 %%
 
 "+"                       { yylval.opv = strdup(yytext); return PLUS; }
@@ -41,7 +45,6 @@ label {digit_sequence}
 ","                       { yylval.opv = strdup(yytext); return COMMA; }
 ":"                       { yylval.opv = strdup(yytext); return COLON; }
 ";"                       { yylval.opv = strdup(yytext); return SEMICOLON; }
-"'"                       { yylval.opv = strdup(yytext); return QUOTE; }
 "("                       { yylval.opv = strdup(yytext); return LPAREN; }
 ")"                       { yylval.opv = strdup(yytext); return RPAREN; }
 "<>"                      { yylval.opv = strdup(yytext); return LTGT; }
@@ -86,7 +89,12 @@ label {digit_sequence}
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
 
-[a-z][_a-z0-9]*           { yylval.strv = strdup(yytext); return IDENTIFIER; }
+"'"                       { BEGIN(string); }
+<string>{string_element}+ { yylval.strv = strdup(yytext); return STRING; }
+<string>"'"               { BEGIN(INITIAL); }
+<string>.                 { printf("unhandled character in string: %c\n", *yytext); }
+
+[a-z][_a-z0-9]*           { yylval.identv = strdup(yytext); return IDENTIFIER; }
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
 [ \t\r]*                  /* ignore */;
@@ -96,6 +104,7 @@ label {digit_sequence}
 %%
 
 /*
+"'"                       { yylval.opv = strdup(yytext); return QUOTE; }
 [a-z]                     { yylval.letterv = *yytext; return LETTER; }
 [0-9]                     { yylval.digitv = *yytext; return DIGIT; }
 {label}                   { yylval.labelv = strdup(yytext);
