@@ -11,8 +11,16 @@
 letter [a-z]
 identifier {letter}("_"({letter}|{digit}))*
 
-digit [0-9]
+number {signed_real}|{signed_integer}
+signed_real {sign}?{unsigned_real}
+signed_integer {sign}?{unsigned_integer}
+unsigned_real {digit_sequence}(("."{fractional_part}("e"{scale_factor})?)|("e"{scale_factor}))
+unsigned_integer {digit_sequence}
+fractional_part {digit_sequence}
+scale_factor {sign}?{digit_sequence}
 digit_sequence {digit}+
+sign [+\-]
+digit [0-9]
 
 %%
 
@@ -75,7 +83,7 @@ digit_sequence {digit}+
 "with"                    { return WITH; }
 
 [a-z][_a-z0-9]*           { yylval.strv = strdup(yytext); return IDENTIFIER; }
-{digit_sequence}          { yylval.numberv = strdup(yytext); return NUMBER; }
+{number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
 [ \t\r]*                  /* ignore */;
 [\n]                      { yylineno++; }
