@@ -5,7 +5,8 @@
 
 %{
 #define YY_DECL extern "C" int yylex()
-#include "parser.hh"
+#include "parser.hh" /* all the tokens and yylval */
+#include "main.hh" /* yyerror */
 %}
 
 letter [a-z]
@@ -19,8 +20,11 @@ unsigned_integer {digit_sequence}
 fractional_part {digit_sequence}
 scale_factor {sign}?{digit_sequence}
 digit_sequence {digit}+
+
 sign [+\-]
 digit [0-9]
+
+label {digit_sequence}
 
 %%
 
@@ -90,6 +94,16 @@ digit [0-9]
 .                         { printf("unknown character %c\n", *yytext); }
 
 %%
+
+/*
+[a-z]                     { yylval.letterv = *yytext; return LETTER; }
+[0-9]                     { yylval.digitv = *yytext; return DIGIT; }
+{label}                   { yylval.labelv = strdup(yytext);
+                            const int labeln = atoi(yytext);
+                            if (labeln < 0 || labeln > 9999)
+                              yyerror("labels must be in the interval 0 to 9999");
+                            return LABELN; }
+*/
 
 // vim: et:ts=2:sw=2
 
