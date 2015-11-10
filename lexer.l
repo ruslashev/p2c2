@@ -11,6 +11,7 @@
 
 %x string
 %x comment
+%x label
 
 letter [a-z]
 identifier {letter}("_"({letter}|{digit}))*
@@ -40,12 +41,13 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "="                       { yylval.opv = strdup(yytext); return EQUAL; }
 "<"                       { yylval.opv = strdup(yytext); return LT; }
 ">"                       { yylval.opv = strdup(yytext); return GT; }
-"["                       { yylval.opv = strdup(yytext); return LBRACKET; }
-"]"                       { yylval.opv = strdup(yytext); return RBRACKET; }
+"["|"(."                  { yylval.opv = strdup(yytext); return LBRACKET; }
+"]"|".)"                  { yylval.opv = strdup(yytext); return RBRACKET; }
 "."                       { yylval.opv = strdup(yytext); return DOT; }
 ","                       { yylval.opv = strdup(yytext); return COMMA; }
 ":"                       { yylval.opv = strdup(yytext); return COLON; }
 ";"                       { yylval.opv = strdup(yytext); return SEMICOLON; }
+"^"|"@"                   { yylval.opv = strdup(yytext); return UPARROW; }
 "("                       { yylval.opv = strdup(yytext); return LPAREN; }
 ")"                       { yylval.opv = strdup(yytext); return RPAREN; }
 "<>"                      { yylval.opv = strdup(yytext); return LTGT; }
@@ -69,7 +71,6 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "goto"                    { return GOTO; }
 "if"                      { return IF; }
 "in"                      { return IN; }
-"label"                   { return LABEL; }
 "mod"                     { return MOD; }
 "nil"                     { return NIL; }
 "not"                     { return NOT; }
@@ -89,6 +90,15 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "var"                     { return VAR; }
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
+
+"label"                   { BEGIN(label); return LABEL; }
+<label>{label}            { yylval.labelv = strdup(yytext);
+                            const int labeln = atoi(yytext);
+                            if (labeln < 0 || labeln > 9999)
+                              yyerror("labels must be in the interval 0 to 9999");
+                            return LABELN; }
+<label>","                { return LABELCOMMA; }
+<label>";"                { BEGIN(INITIAL); return LABELSEMICOLON; }
 
 "'"                       { BEGIN(string); }
 <string>{string_element}+ { yylval.strv = strdup(yytext); return STRING; }
@@ -112,11 +122,6 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "'"                       { yylval.opv = strdup(yytext); return QUOTE; }
 [a-z]                     { yylval.letterv = *yytext; return LETTER; }
 [0-9]                     { yylval.digitv = *yytext; return DIGIT; }
-{label}                   { yylval.labelv = strdup(yytext);
-                            const int labeln = atoi(yytext);
-                            if (labeln < 0 || labeln > 9999)
-                              yyerror("labels must be in the interval 0 to 9999");
-                            return LABELN; }
 */
 
 // vim: et:ts=2:sw=2

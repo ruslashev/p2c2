@@ -1,3 +1,6 @@
+label 1244, 1241;
+label 0;
+{
 i identifer { comment } asdf a420_asfd
 124 4512512345 228 1488 (* comment *) 2517 1
 1e10 1 +100 -0.1 5e-3 87.35E+8 { fck logic *)
@@ -7,3 +10,4 @@ i identifer { comment } asdf a420_asfd
 'what''s the asdf man'
 ''''
 'a-z0-9!@#$%^&*()_\-=+\[\]{};:\",.<>/?'
+}
