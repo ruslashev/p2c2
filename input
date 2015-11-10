@@ -1,3 +1,47 @@
-const lmax=20; asdf=228;
-      lmao=420;
+type
+  natural = 0..maxint;
+  count = integer;
+  range = integer;
+  colour = (red, yellow, green, blue);
+  sex = (male, female);
+  year = 1900..1999;
+  asdf = -10..+10;
+  wdydt = '0'..'9';
+  yyk = red..green;
+  shape = (triangle, rectangle, circle);
+  punchedcard = array [1..80] of char;
+  win = array [Boolean] of colour;
+  send = array [Boolean] of array [1..10] of array [size] of real
+  help = packed array [Boolean] of array [1..10, size] of real
+  charsequence = file of char;
+  polar = record
+            r : real;
+            theta: angle
+            year: 0..2000;
+            name, firstname: string;
+            case married : Boolean of
+              true : (Gal : string);
+              false : ( )
+            case shape of
+              triangle :
+                (side : real ; inclination, angle1, angle2 : angle);
+              rectangle :
+                (side1, side2 : real, sadfj : angle);
+          end;
+  indextype = 1..limit;
+  masti = set of (club, diamond, heart, spade)
+  vector = array [indextype] of real;
+  person = ^ persondetails;
+  persondetails = record
+                    name, firstname: charsequence;
+                    age : natural;
+                    married : Boolean ;
+                    father, child, sibling : person;
+                    case s : sex of
+                      male :
+                        (enlisted, bearded : Boolean);
+                      female :
+                        (mother, programmer : Boolean)
+                    end;
+FileOfInteger = file of integer;
 
