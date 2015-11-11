@@ -11,17 +11,17 @@ type
   shape = (triangle, rectangle, circle);
   punchedcard = array [1..80] of char;
   win = array [Boolean] of colour;
-  send = array [Boolean] of array [1..10] of array [size] of real
-  help = packed array [Boolean] of array [1..10, size] of real
+  send = array [Boolean] of array [1..10] of array [size] of real;
+  help = packed array [Boolean] of array [1..10, size] of real;
   charsequence = file of char;
   polar = record
             r : real;
-            theta: angle
+            theta: angle;
             year: 0..2000;
             name, firstname: string;
             case married : Boolean of
               true : (Gal : string);
-              false : ( )
+              false : ( );
             case shape of
               triangle :
                 (side : real ; inclination, angle1, angle2 : angle);

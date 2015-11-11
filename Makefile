@@ -4,7 +4,7 @@ CXXFLAGS = -Wall -Wextra -g -std=c++0x
 EXECNAME = p2c2
 
 all:
-	bison -d -o parser.cc parser.y
+	bison -d -o parser.cc parser.y -Wno-other
 	flex -o lexer.cc lexer.l
 	$(CXX) -c -o .parser.o parser.cc $(CXXFLAGS)
 	$(CXX) -c -o .lexer.o lexer.cc $(CXXFLAGS)
