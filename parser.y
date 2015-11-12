@@ -166,8 +166,46 @@ variable_declaration_list: variable_declaration_list SEMICOLON variable_declarat
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
                     printvector($1); printf("\n"); };
-/* variable_access: entire_variable | component_variable | identified_variable */
-/*                | buffer_variable; */
+variable_access: entire_variable | component_variable /* | identified_variable */
+               | buffer_variable;
+/* -> Entire variables */
+entire_variable: variable_identifier;
+variable_identifier: identifier;
+/* -> Component variables */
+component_variable: indexed_variable | field_designator;
+/* ->-> Indexed-variables */
+indexed_variable: array_variable LBRACKET index_expression_list RBRACKET;
+index_expression_list: index_expression_list COMMA index_expression
+                     | index_expression;
+array_variable: variable_access;
+index_expression: expression;
+/* ->-> Field-designators */
+field_designator: record_variable DOT field_specifier;
+                /* | field_designator_identifier; */
+record_variable: variable_access;
+field_specifier: field_identifier;
+field_identifier: identifier;
+/* ->-> Identified-variables */
+/* ->-> Buffer-variables */
+buffer_variable: file_variable UPARROW;
+file_variable: variable_access;
+
+/* ----------------------------------------------------------------------------
+ * Procedure and function declarations */
+procedure_and_function_declaration_part: procedure_and_function_declaration_list;
+procedure_and_function_declaration_list:
+  procedure_and_function_declaration_list SEMICOLON procedure_or_funcion_declaration
+                                       | procedure_or_funcion_declaration;
+procedure_or_funcion_declaration: procedure_declaration | function_declaration;
+/* -> Procedure declarations */
+procedure_declaration: procedure_heading SEMICOLON directive
+                     | procedure_identification SEMICOLON procedure_block
+                     | procedure_heading SEMICOLON procedure_block;
+procedure_heading: PROCEDURE identifier
+                 | PROCEDURE identifier formal_parameter_list;
+procedure_identification: PROCEDURE procedure_identifier;
+procedure_identifier: identifier;
+procedure_block: block;
 
 %%
 
