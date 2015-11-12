@@ -46,5 +46,23 @@ type
                       true : (Gal : string);
                       false : ( );
                   end;
-FileOfInteger = file of integer;
+  FileOfInteger = file of integer;
 
+var
+  x, y, z, max : real;
+  i, j : integer;
+  k : 0..9;
+  p, q, r : Boolean;
+  operator : (plus, minus, times);
+  a : array [0..63] of real;
+  c : colour;
+  f : file of char;
+  hue1, hue2 : set of colour;
+  p1, p2 : person;
+  m, m1, m2 : array [1..10, 1..10] of real;
+  coord : polar;
+  pooltape : array [1..4] of FileOfInteger;
+  date : record
+           month: 1..12;
+           year : integer
+         end;

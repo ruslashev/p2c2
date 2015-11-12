@@ -21,7 +21,6 @@ extern "C" int yylex();
   char *labelv;
   /* (^) used in lex. (v) used in bison */
   std::string *string;
-  char *label;
   std::vector<std::string*> *strvector;
 }
 
@@ -37,7 +36,7 @@ extern "C" int yylex();
 %token LABEL LABELCOMMA LABELSEMICOLON;
 %token <labelv> LABELN;
 
-%type <string> identifier constant number string sign;
+%type <string> identifier number string sign label constant;
 %type <string> type_identifier type_denoter;
 %type <strvector> identifier_list;
 
@@ -57,8 +56,8 @@ string: STRING { $$ = new std::string($1); /* printf("str: <%s>\n", $1); */ };
 block: label_declaration_part
        constant_definition_part
        type_definition_part
+       variable_declaration_part
        /*
-       variable_definition_part
        procedure_and_function_declaration_part
        statement_part ;
        */
@@ -66,16 +65,17 @@ block: label_declaration_part
 
 /* ----------------------------------------------------------------------------
  * Label declarations */
-label_declaration_part: LABEL label_list LABELSEMICOLON;
-label_list: label_list LABELCOMMA LABELN
-          | LABELN;
+label_declaration_part: | LABEL label_list LABELSEMICOLON;
+label_list: label_list LABELCOMMA label
+          | label;
+label: LABELN { printf("label %s\n", $1); }
 
 /* ----------------------------------------------------------------------------
  * Constant definitions */
-constant_definition_part: CONST constant_definition_list;
-constant_definition_list: constant_definition_list constant_definition
+constant_definition_part: | CONST constant_definition_list SEMICOLON;
+constant_definition_list: constant_definition_list SEMICOLON constant_definition
                         | constant_definition;
-constant_definition: identifier EQUAL constant SEMICOLON
+constant_definition: identifier EQUAL constant
                    { printf("const %s = %s\n", $1->c_str(), $3->c_str()); };
 constant: sign number { $$ = new std::string(*($1)); $$->append(*($2)); }
         | sign identifier { $$ = new std::string(*($1)); $$->append(*($2)); }
@@ -97,7 +97,7 @@ type_denoter: type_identifier { printf("type identifier <%s>\n", ($1)->c_str());
 new_type: new_ordinal_type | new_structured_type | new_pointer_type;
 /* simple_type_identifier: type_identifier; */
 /* structured_type_identifier: type_identifier; */
-pointer_type_identifier: type_identifier;
+/* pointer_type_identifier: type_identifier; */
 type_identifier: identifier;
 /* -> Simple-types */
 /* simple_type: ordinal_type | real_type_identifier; */
@@ -158,6 +158,16 @@ file_type: TOKFILE OF component_type;
 /* pointer_type: new_pointer_type | pointer_type_identifier; */
 new_pointer_type: UPARROW domain_type;
 domain_type: type_identifier;
+
+/* ----------------------------------------------------------------------------
+ * Variable declarations */
+variable_declaration_part: | VAR variable_declaration_list SEMICOLON;
+variable_declaration_list: variable_declaration_list SEMICOLON variable_declaration
+                         | variable_declaration;
+variable_declaration: identifier_list COLON type_denoter { printf("variables ");
+                    printvector($1); printf("\n"); };
+/* variable_access: entire_variable | component_variable | identified_variable */
+/*                | buffer_variable; */
 
 %%
 

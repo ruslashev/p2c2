@@ -101,6 +101,7 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
                             return LABELN; }
 <label>","                { return LABELCOMMA; }
 <label>";"                { BEGIN(INITIAL); return LABELSEMICOLON; }
+<label>" "                ;
 
 "'"                       { BEGIN(string); }
 <string>{string_element}+ { yylval.strv = strdup(yytext); return STRING; }
@@ -111,12 +112,12 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "{"|"(*"                  { BEGIN(comment); }
 <comment>"}"|"*)"         { BEGIN(INITIAL); }
 <comment>\n               ;
-<comment>.                /* eat */
+<comment>.                /* eat */;
 
 [a-z][_a-z0-9]*           { yylval.identv = strdup(yytext); return IDENTIFIER; }
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
-[ \t\r\n]*                /* ignore */
+[ \t\r\n]*                /* ignore */;
 .                         { printf("unknown character %c\n", *yytext); }
 
 %%
