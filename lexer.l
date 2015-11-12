@@ -105,26 +105,21 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "'"                       { BEGIN(string); }
 <string>{string_element}+ { yylval.strv = strdup(yytext); return STRING; }
 <string>"'"               { BEGIN(INITIAL); }
+<string>\n                { yyerror("string cannot contain newline"); }
 <string>.                 { printf("unhandled character in string: %c\n", *yytext); }
 
 "{"|"(*"                  { BEGIN(comment); }
 <comment>"}"|"*)"         { BEGIN(INITIAL); }
+<comment>\n               ;
 <comment>.                /* eat */
 
 [a-z][_a-z0-9]*           { yylval.identv = strdup(yytext); return IDENTIFIER; }
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
-[ \t\r]*                  /* ignore */
-[\n]                      { yylineno++; }
+[ \t\r\n]*                /* ignore */
 .                         { printf("unknown character %c\n", *yytext); }
 
 %%
-
-/*
-"'"                       { yylval.opv = strdup(yytext); return QUOTE; }
-[a-z]                     { yylval.letterv = *yytext; return LETTER; }
-[0-9]                     { yylval.digitv = *yytext; return DIGIT; }
-*/
 
 // vim: et:ts=2:sw=2
 
