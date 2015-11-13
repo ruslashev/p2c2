@@ -57,10 +57,8 @@ block: label_declaration_part
        constant_definition_part
        type_definition_part
        variable_declaration_part
-       /*
        procedure_and_function_declaration_part
-       statement_part ;
-       */
+       statement_part;
        ;
 
 /* ----------------------------------------------------------------------------
@@ -95,9 +93,9 @@ type_definition: identifier EQUAL type_denoter SEMICOLON
 type_denoter: type_identifier { printf("type identifier <%s>\n", ($1)->c_str()); }
             | new_type { printf("<new type>\n"); };
 new_type: new_ordinal_type | new_structured_type | new_pointer_type;
-/* simple_type_identifier: type_identifier; */
+simple_type_identifier: type_identifier;
 /* structured_type_identifier: type_identifier; */
-/* pointer_type_identifier: type_identifier; */
+pointer_type_identifier: type_identifier;
 type_identifier: identifier;
 /* -> Simple-types */
 /* simple_type: ordinal_type | real_type_identifier; */
@@ -180,8 +178,8 @@ index_expression_list: index_expression_list COMMA index_expression
 array_variable: variable_access;
 index_expression: expression;
 /* ->-> Field-designators */
-field_designator: record_variable DOT field_specifier;
-                /* | field_designator_identifier; */
+field_designator: record_variable DOT field_specifier
+                | field_designator_identifier;
 record_variable: variable_access;
 field_specifier: field_identifier;
 field_identifier: identifier;
@@ -193,19 +191,147 @@ file_variable: variable_access;
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
 procedure_and_function_declaration_part: procedure_and_function_declaration_list;
-procedure_and_function_declaration_list:
-  procedure_and_function_declaration_list SEMICOLON procedure_or_funcion_declaration
+procedure_and_function_declaration_list: procedure_and_function_declaration_list
+                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
 procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 /* -> Procedure declarations */
-procedure_declaration: procedure_heading SEMICOLON directive
+procedure_declaration: procedure_heading SEMICOLON identifier
                      | procedure_identification SEMICOLON procedure_block
                      | procedure_heading SEMICOLON procedure_block;
-procedure_heading: PROCEDURE identifier
-                 | PROCEDURE identifier formal_parameter_list;
+procedure_heading: PROCEDURE identifier formal_parameter_list
+                 | PROCEDURE identifier;
 procedure_identification: PROCEDURE procedure_identifier;
 procedure_identifier: identifier;
 procedure_block: block;
+/* -> Function declarations */
+function_declaration: function_heading SEMICOLON identifier
+                    | function_identification SEMICOLON function_block
+                    | function_heading SEMICOLON function_block;
+function_heading: FUNCTION identifier formal_parameter_list COLON result_type
+                | FUNCTION identifier COLON result_type;
+function_identification: FUNCTION function_identifier;
+function_identifier: identifier;
+result_type: simple_type_identifier | pointer_type_identifier;
+function_block: block;
+/* ->-> Parameters */
+formal_parameter_list: LPAREN formal_parameter_section_list RPAREN;
+formal_parameter_section_list: formal_parameter_section_list SEMICOLON
+                               formal_parameter_section
+                             | formal_parameter_section;
+formal_parameter_section: value_parameter_specification
+                        | variable_parameter_specification
+                        | procedural_parameter_specification
+                        | functional_parameter_specification;
+value_parameter_specification: identifier_list COLON type_identifier;
+variable_parameter_specification: VAR identifier_list COLON type_identifier;
+procedural_parameter_specification: procedure_heading;
+functional_parameter_specification: function_heading;
+/* Expression */
+expression: simple_expression relational_operator simple_expression
+          | simple_expression;
+simple_expression: sign term_list
+                 | term_list;
+term_list: term_list adding_operator term
+         | term;
+term: factor_list;
+factor_list: factor_list multiplying_operator factor
+           | factor;
+factor: variable_access | unsigned_constant | function_designator | set_constructor
+      | LPAREN expression RPAREN | NOT factor;
+unsigned_constant: number | string | identifier | NIL;
+set_constructor: LBRACKET member_designator_list RBRACKET
+               | LBRACKET RBRACKET;
+member_designator_list: member_designator_list COMMA member_designator
+                      | member_designator;
+member_designator: expression ELLIPSIS expression
+                 | expression;
+multiplying_operator: ASTERISK | SLASH | DIV | MOD | AND;
+adding_operator: PLUS | MINUS | OR;
+relational_operator: EQUAL | LTGT | LT | GT | LTE | GTE | IN;
+boolean_expression: expression;
+function_designator: function_identifier LPAREN actual_parameter_list RPAREN
+                   | function_identifier;
+actual_parameter_list: actual_parameter_list COMMA actual_parameter
+                     | actual_parameter;
+actual_parameter: expression | variable_access | procedure_identifier
+                | function_identifier;
+statement: label COLON simple_statement
+         | label COLON structured_statement
+         | simple_statement
+         | structured_statement;
+simple_statement: | assignment_statement | procedure_statement | goto_statement;
+assignment_statement: variable_access COLEQUAL expression
+                    | function_identifier COLEQUAL expression;
+procedure_statement: procedure_identifier parameter_list;
+parameter_list: | actual_parameter_list
+              | read_parameter_list | readln_parameter_list
+              | write_parameter_list | writeln_parameter_list;
+goto_statement: GOTO label;
+/* Structured statements */
+structured_statement: compound_statement | conditional_statement
+                    | repetetive_statement | with_statement;
+statement_sequence: statement_list;
+statement_list: statement_list SEMICOLON statement
+              | statement;
+compound_statement: TOKBEGIN statement_sequence END;
+/* Conditional statements */
+conditional_statement: if_statement | case_statement;
+/* if */
+if_statement: IF boolean_expression THEN statement else_part
+            | IF boolean_expression THEN statement;
+else_part: ELSE statement;
+/* case */
+case_statement: CASE case_index OF case_list_element_list SEMICOLON END
+              | CASE case_index OF case_list_element_list END
+case_list_element_list: case_list_element_list SEMICOLON case_list_element
+                      | case_list_element;
+case_list_element: case_constant_list COLON statement;
+case_index: expression;
+/* repetetive statements */
+repetetive_statement: repeat_statement | while_statement | for_statement;
+repeat_statement: REPEAT statement_sequence UNTIL boolean_expression;
+while_statement: WHILE boolean_expression DO statement;
+for_statement: FOR control_variable COLEQUAL initial_value TO final_value DO statement
+             | FOR control_variable COLEQUAL initial_value DOWNTO final_value DO statement;
+control_variable: entire_variable;
+initial_value: expression;
+final_value: expression;
+/* with statements */
+with_statement: WITH record_variable_list DO statement;
+record_variable_list: record_variable_list COMMA record_variable
+                    | record_variable;
+field_designator_identifier: identifier;
+/* Input and output */
+read_parameter_list: LPAREN file_variable COMMA variable_access_list RPAREN
+                   | LPAREN variable_access_list RPAREN;
+variable_access_list: variable_access_list COMMA variable_access
+                    | variable_access;
+readln_parameter_list: | LPAREN readln_variable_access_list RPAREN;
+readln_variable_access_list: readln_variable_access_list COMMA variable_access
+                           | file_variable
+                           | variable_access;
+write_parameter_list: LPAREN file_variable COMMA write_parameters_list RPAREN
+                    | LPAREN write_parameters_list RPAREN;
+write_parameters_list: write_parameters_list COMMA write_parameter
+                     | write_parameter;
+write_parameter: expression COLON expression COLON expression
+               | expression COLON expression
+               | expression;
+writeln_parameter_list: | LPAREN writeln_variable_access_list RPAREN;
+writeln_variable_access_list: writeln_variable_access_list COMMA write_parameter
+                            | file_variable
+                            | write_parameter;
+
+statement_part: compound_statement;
+
+/* ----------------------------------------------------------------------------
+ * Program */
+program: program_heading SEMICOLON program_block DOT;
+program_heading: PROGRAM identifier LPAREN program_parameter_list RPAREN
+               | PROGRAM identifier LPAREN
+program_parameter_list: identifier_list;
+program_block: block;
 
 %%
 
