@@ -92,6 +92,7 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "var"                     { return VAR; }
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
+"forward"                 { return FORWARD; }
 
 "label"                   { BEGIN(label); return LABEL; }
 <label>{label}            { yylval.labelv = strdup(yytext);

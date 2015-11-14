@@ -93,7 +93,7 @@ PROGRAM Sort(input, output);
                     QuicksortRecur(splitpt+1, stop);
                 END
             END;
-                    
+
         BEGIN { Quicksort }
             QuicksortRecur(1, size)
         END;

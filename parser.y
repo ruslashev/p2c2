@@ -28,7 +28,7 @@ extern "C" int yylex();
 %token <opv> COLON SEMICOLON UPARROW LPAREN RPAREN LTGT LTE GTE COLEQUAL ELLIPSIS
 %token AND ARRAY TOKBEGIN CASE CONST DIV DO DOWNTO ELSE END TOKFILE FOR FUNCTION
 %token GOTO IF IN MOD NIL NOT OF OR OTHERWISE PACKED PROCEDURE PROGRAM RECORD
-%token REPEAT SET THEN TO TYPE UNTIL VAR WHILE WITH
+%token REPEAT SET THEN TO TYPE UNTIL VAR WHILE WITH FORWARD
 
 %token <identv> IDENTIFIER;
 %token <numberv> NUMBER;
@@ -44,10 +44,7 @@ extern "C" int yylex();
 
 %%
 
-program: program term
-       | term;
-
-term: block;
+null: ;
 
 identifier: IDENTIFIER { $$ = new std::string($1); /* printf("ident: <%s>\n", $1); */ };
 number: NUMBER { $$ = new std::string($1); /* printf("num: <%s>\n", $1); */ };
@@ -85,7 +82,7 @@ sign: PLUS { $$ = new std::string($1, strlen($1)); }
 
 /* ----------------------------------------------------------------------------
  * Type definitions */
-type_definition_part: TYPE type_definition_list
+type_definition_part: | TYPE type_definition_list
 type_definition_list: type_definition_list type_definition
                     | type_definition;
 type_definition: identifier EQUAL type_denoter SEMICOLON
@@ -164,7 +161,7 @@ variable_declaration_list: variable_declaration_list SEMICOLON variable_declarat
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
                     printvector($1); printf("\n"); };
-variable_access: entire_variable | component_variable /* | identified_variable */
+variable_access: entire_variable | component_variable | identified_variable
                | buffer_variable;
 /* -> Entire variables */
 entire_variable: variable_identifier;
@@ -187,16 +184,18 @@ field_identifier: identifier;
 /* ->-> Buffer-variables */
 buffer_variable: file_variable UPARROW;
 file_variable: variable_access;
+identified_variable: pointer_variable UPARROW;
+pointer_variable: variable_access;
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
-procedure_and_function_declaration_part: procedure_and_function_declaration_list;
-procedure_and_function_declaration_list: procedure_and_function_declaration_list
-                                         SEMICOLON procedure_or_funcion_declaration
+procedure_and_function_declaration_part: procedure_or_function_declaration_list;
+procedure_or_function_declaration_list: procedure_or_function_declaration_list
+                                        SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
 procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 /* -> Procedure declarations */
-procedure_declaration: procedure_heading SEMICOLON identifier
+procedure_declaration: procedure_heading SEMICOLON FORWARD
                      | procedure_identification SEMICOLON procedure_block
                      | procedure_heading SEMICOLON procedure_block;
 procedure_heading: PROCEDURE identifier formal_parameter_list
@@ -205,7 +204,7 @@ procedure_identification: PROCEDURE procedure_identifier;
 procedure_identifier: identifier;
 procedure_block: block;
 /* -> Function declarations */
-function_declaration: function_heading SEMICOLON identifier
+function_declaration: function_heading SEMICOLON FORWARD
                     | function_identification SEMICOLON function_block
                     | function_heading SEMICOLON function_block;
 function_heading: FUNCTION identifier formal_parameter_list COLON result_type
@@ -309,8 +308,8 @@ variable_access_list: variable_access_list COMMA variable_access
                     | variable_access;
 readln_parameter_list: | LPAREN readln_variable_access_list RPAREN;
 readln_variable_access_list: readln_variable_access_list COMMA variable_access
-                           | file_variable
-                           | variable_access;
+                           | file_variable_or_variable_access;
+file_variable_or_variable_access: file_variable | variable_access;
 write_parameter_list: LPAREN file_variable COMMA write_parameters_list RPAREN
                     | LPAREN write_parameters_list RPAREN;
 write_parameters_list: write_parameters_list COMMA write_parameter
@@ -329,7 +328,8 @@ statement_part: compound_statement;
  * Program */
 program: program_heading SEMICOLON program_block DOT;
 program_heading: PROGRAM identifier LPAREN program_parameter_list RPAREN
-               | PROGRAM identifier LPAREN
+                 { printf("program <%s>\n", $2->c_str()); }
+               | PROGRAM identifier { printf("program <%s>\n", $2->c_str()); };
 program_parameter_list: identifier_list;
 program_block: block;
 
