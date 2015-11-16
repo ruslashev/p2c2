@@ -34,6 +34,7 @@ extern "C" int yylex();
 %token <strv> STRING;
 %token LABEL LABELCOMMA LABELSEMICOLON;
 %token <labelv> LABELN;
+%token READ WRITE READLN WRITELN
 
 %type <string> identifier number string sign label constant;
 %type <string> type_identifier type_denoter;
@@ -147,7 +148,6 @@ base_type: ordinal_type;
 /* -> File-types */
 file_type: TOKFILE OF component_type;
 /* -> Pointer-types */
-/* pointer_type: new_pointer_type | pointer_type_identifier; */
 new_pointer_type: UPARROW domain_type;
 domain_type: type_identifier;
 
@@ -172,8 +172,7 @@ index_expression_list: index_expression_list COMMA index_expression
 array_variable: variable_access;
 index_expression: expression;
 /* ->-> Field-designators */
-field_designator: record_variable DOT field_specifier
-                | field_designator_identifier;
+field_designator: record_variable DOT field_specifier;
 record_variable: variable_access;
 field_specifier: field_identifier;
 field_identifier: identifier;
@@ -186,18 +185,17 @@ pointer_variable: variable_access;
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
-procedure_and_function_declaration_part: procedure_or_function_declaration_list;
+procedure_and_function_declaration_part: empty
+                                       | procedure_or_function_declaration_list;
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
 procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 /* -> Procedure declarations */
 procedure_declaration: procedure_heading SEMICOLON FORWARD
-                     | procedure_identification SEMICOLON procedure_block
                      | procedure_heading SEMICOLON procedure_block;
 procedure_heading: PROCEDURE identifier formal_parameter_list
                  | PROCEDURE identifier;
-procedure_identification: PROCEDURE procedure_identifier;
 procedure_identifier: identifier;
 procedure_block: block;
 /* -> Function declarations */
@@ -206,7 +204,7 @@ function_declaration: function_heading SEMICOLON FORWARD
                     | function_heading SEMICOLON function_block;
 function_heading: FUNCTION identifier formal_parameter_list COLON result_type
                 | FUNCTION identifier COLON result_type;
-function_identification: FUNCTION function_identifier;
+function_identification: FUNCTION identifier;
 function_identifier: identifier;
 result_type: simple_type_identifier | pointer_type_identifier;
 function_block: block;
@@ -235,7 +233,7 @@ factor_list: factor_list multiplying_operator factor
            | factor;
 factor: variable_access | unsigned_constant | function_designator | set_constructor
       | LPAREN expression RPAREN | NOT factor;
-unsigned_constant: number | string | identifier | NIL;
+unsigned_constant: number | string | NIL;
 set_constructor: LBRACKET member_designator_list RBRACKET
                | LBRACKET RBRACKET;
 member_designator_list: member_designator_list COMMA member_designator
@@ -257,12 +255,13 @@ statement: label COLON simple_statement
          | simple_statement
          | structured_statement;
 simple_statement: empty | assignment_statement | procedure_statement | goto_statement;
-assignment_statement: variable_access COLEQUAL expression
-                    | function_identifier COLEQUAL expression;
-procedure_statement: procedure_identifier parameter_list;
-parameter_list: empty | actual_parameter_list
-              | read_parameter_list | readln_parameter_list
-              | write_parameter_list | writeln_parameter_list;
+assignment_statement: variable_access COLEQUAL expression;
+procedure_statement: READ read_parameter_list
+                   | READLN readln_parameter_list
+                   | WRITE write_parameter_list
+                   | WRITELN writeln_parameter_list
+                   | procedure_identifier parameter_list;
+parameter_list: empty | actual_parameter_list;
 goto_statement: GOTO label;
 /* Structured statements */
 structured_statement: compound_statement | conditional_statement
