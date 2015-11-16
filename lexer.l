@@ -78,7 +78,6 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "not"                     { return NOT; }
 "of"                      { return OF; }
 "or"                      { return OR; }
-"otherwise"               { return OTHERWISE; }
 "packed"                  { return PACKED; }
 "procedure"               { return PROCEDURE; }
 "program"                 { return PROGRAM; }
