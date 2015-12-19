@@ -56,7 +56,6 @@ block: label_declaration_part
        variable_declaration_part
        procedure_and_function_declaration_part
        statement_part;
-       ;
 
 /* ----------------------------------------------------------------------------
  * Label declarations */
