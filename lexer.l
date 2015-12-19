@@ -118,7 +118,7 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 <comment>\n               ;
 <comment>.                ;
 
-[a-z][_a-z0-9]*           { yylval.identv = strdup(yytext); return IDENTIFIER; }
+[a-z][_a-z0-9\-]*         { yylval.identv = strdup(yytext); return IDENTIFIER; }
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
 [ \t\r\n]*                ;

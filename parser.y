@@ -158,11 +158,10 @@ variable_declaration_list: variable_declaration_list SEMICOLON variable_declarat
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
                     printvector($1); printf("\n"); };
-variable_access: entire_variable | component_variable | identified_variable
-               | buffer_variable;
+variable_access: entire_variable_or_function_call | component_variable
+               | identified_variable | buffer_variable;
 /* -> Entire variables */
-entire_variable: variable_identifier;
-variable_identifier: identifier;
+entire_variable_or_function_call: identifier;
 /* -> Component variables */
 component_variable: indexed_variable | field_designator;
 /* ->-> Indexed-variables */
@@ -195,18 +194,23 @@ procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 procedure_declaration: procedure_heading SEMICOLON FORWARD
                      | procedure_heading SEMICOLON procedure_block;
 procedure_heading: PROCEDURE identifier formal_parameter_list
-                 | PROCEDURE identifier;
+                 { printf("procedure <%s> with params\n", ($2)->c_str()); }
+                 | PROCEDURE identifier
+                 { printf("procedure <%s> w/o params\n", ($2)->c_str()); };
 procedure_identifier: identifier;
 procedure_block: block;
 /* -> Function declarations */
 function_declaration: function_heading SEMICOLON FORWARD
                     | function_identification SEMICOLON function_block
                     | function_heading SEMICOLON function_block;
-function_heading: FUNCTION identifier formal_parameter_list COLON result_type
-                | FUNCTION identifier COLON result_type;
+function_heading: FUNCTION identifier formal_parameter_list COLON type_identifier
+                { printf("function <%s>:<%s> with params\n", ($2)->c_str(),
+                    ($5)->c_str()); }
+                | FUNCTION identifier COLON type_identifier
+                { printf("function <%s>:<%s> with params\n", ($2)->c_str(),
+                    ($4)->c_str()); };
 function_identification: FUNCTION identifier;
 function_identifier: identifier;
-result_type: simple_type_identifier | pointer_type_identifier;
 function_block: block;
 /* ->-> Parameters */
 formal_parameter_list: LPAREN formal_parameter_section_list RPAREN;
@@ -244,8 +248,7 @@ multiplying_operator: ASTERISK | SLASH | DIV | MOD | AND;
 adding_operator: PLUS | MINUS | OR;
 relational_operator: EQUAL | LTGT | LT | GT | LTE | GTE | IN;
 boolean_expression: expression;
-function_designator: function_identifier LPAREN actual_parameter_list RPAREN
-                   | function_identifier;
+function_designator: function_identifier LPAREN actual_parameter_list RPAREN;
 actual_parameter_list: actual_parameter_list COMMA actual_parameter
                      | actual_parameter;
 actual_parameter: expression | variable_access | procedure_identifier
@@ -289,14 +292,13 @@ repeat_statement: REPEAT statement_sequence UNTIL boolean_expression;
 while_statement: WHILE boolean_expression DO statement;
 for_statement: FOR control_variable COLEQUAL initial_value TO final_value DO statement
              | FOR control_variable COLEQUAL initial_value DOWNTO final_value DO statement;
-control_variable: entire_variable;
+control_variable: entire_variable_or_function_call;
 initial_value: expression;
 final_value: expression;
 /* with statements */
 with_statement: WITH record_variable_list DO statement;
 record_variable_list: record_variable_list COMMA record_variable
                     | record_variable;
-field_designator_identifier: identifier;
 /* Input and output */
 read_parameter_list: LPAREN file_variable COMMA variable_access_list RPAREN
                    | LPAREN variable_access_list RPAREN;
@@ -305,7 +307,7 @@ variable_access_list: variable_access_list COMMA variable_access
 readln_parameter_list: empty | LPAREN readln_variable_access_list RPAREN;
 readln_variable_access_list: readln_variable_access_list COMMA variable_access
                            | file_variable_or_variable_access;
-file_variable_or_variable_access: file_variable | variable_access;
+file_variable_or_variable_access: variable_access;
 write_parameter_list: LPAREN file_variable COMMA write_parameters_list RPAREN
                     | LPAREN write_parameters_list RPAREN;
 write_parameters_list: write_parameters_list COMMA write_parameter

@@ -1,5 +1,4 @@
-Program
-helloworld;
+Program helloworld;
 Begin
  Write('Hello asdf');
  Readln;
