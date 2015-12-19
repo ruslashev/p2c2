@@ -78,7 +78,6 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "not"                     { return NOT; }
 "of"                      { return OF; }
 "or"                      { return OR; }
-"otherwise"               { return OTHERWISE; }
 "packed"                  { return PACKED; }
 "procedure"               { return PROCEDURE; }
 "program"                 { return PROGRAM; }
@@ -93,6 +92,10 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "while"                   { return WHILE; }
 "with"                    { return WITH; }
 "forward"                 { return FORWARD; }
+"read"                    { return READ; }
+"write"                   { return WRITE; }
+"readln"                  { return READLN; }
+"writeln"                 { return WRITELN; }
 
 "label"                   { BEGIN(label); return LABEL; }
 <label>{label}            { yylval.labelv = strdup(yytext);

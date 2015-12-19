@@ -27,14 +27,14 @@ extern "C" int yylex();
 %token <opv> PLUS MINUS ASTERISK SLASH EQUAL LT GT LBRACKET RBRACKET DOT COMMA
 %token <opv> COLON SEMICOLON UPARROW LPAREN RPAREN LTGT LTE GTE COLEQUAL ELLIPSIS
 %token AND ARRAY TOKBEGIN CASE CONST DIV DO DOWNTO ELSE END TOKFILE FOR FUNCTION
-%token GOTO IF IN MOD NIL NOT OF OR OTHERWISE PACKED PROCEDURE PROGRAM RECORD
-%token REPEAT SET THEN TO TYPE UNTIL VAR WHILE WITH FORWARD
-
+%token GOTO IF IN MOD NIL NOT OF OR PACKED PROCEDURE PROGRAM RECORD REPEAT SET
+%token THEN TO TYPE UNTIL VAR WHILE WITH FORWARD
 %token <identv> IDENTIFIER;
 %token <numberv> NUMBER;
 %token <strv> STRING;
 %token LABEL LABELCOMMA LABELSEMICOLON;
 %token <labelv> LABELN;
+%token READ WRITE READLN WRITELN
 
 %type <string> identifier number string sign label constant;
 %type <string> type_identifier type_denoter;
@@ -44,7 +44,7 @@ extern "C" int yylex();
 
 %%
 
-null: ;
+empty: ;
 
 identifier: IDENTIFIER { $$ = new std::string($1); /* printf("ident: <%s>\n", $1); */ };
 number: NUMBER { $$ = new std::string($1); /* printf("num: <%s>\n", $1); */ };
@@ -59,14 +59,16 @@ block: label_declaration_part
 
 /* ----------------------------------------------------------------------------
  * Label declarations */
-label_declaration_part: | LABEL label_list LABELSEMICOLON;
+label_declaration_part: empty { puts("no labels"); }
+                      | LABEL label_list LABELSEMICOLON;
 label_list: label_list LABELCOMMA label
           | label;
 label: LABELN { printf("label %s\n", $1); }
 
 /* ----------------------------------------------------------------------------
  * Constant definitions */
-constant_definition_part: | CONST constant_definition_list SEMICOLON;
+constant_definition_part: empty { puts("no consts"); }
+                        | CONST constant_definition_list SEMICOLON;
 constant_definition_list: constant_definition_list SEMICOLON constant_definition
                         | constant_definition;
 constant_definition: identifier EQUAL constant
@@ -81,7 +83,8 @@ sign: PLUS { $$ = new std::string($1, strlen($1)); }
 
 /* ----------------------------------------------------------------------------
  * Type definitions */
-type_definition_part: | TYPE type_definition_list
+type_definition_part: empty { puts("no types"); }
+                    | TYPE type_definition_list
 type_definition_list: type_definition_list type_definition
                     | type_definition;
 type_definition: identifier EQUAL type_denoter SEMICOLON
@@ -90,15 +93,12 @@ type_denoter: type_identifier { printf("type identifier <%s>\n", ($1)->c_str());
             | new_type { printf("<new type>\n"); };
 new_type: new_ordinal_type | new_structured_type | new_pointer_type;
 simple_type_identifier: type_identifier;
-/* structured_type_identifier: type_identifier; */
 pointer_type_identifier: type_identifier;
 type_identifier: identifier;
 /* -> Simple-types */
-/* simple_type: ordinal_type | real_type_identifier; */
 ordinal_type: new_ordinal_type | ordinal_type_identifier;
 new_ordinal_type: enumerated_type | subrange_type;
 ordinal_type_identifier: type_identifier;
-/* real_type_identifier: type_identifier; */
 /* -> Enumerated-types */
 enumerated_type: LPAREN identifier_list RPAREN { printf("enumerated type ");
                printvector($2); puts(""); };
@@ -108,7 +108,6 @@ identifier_list: identifier_list COMMA identifier { $$->push_back($3); }
 subrange_type: constant ELLIPSIS constant { printf("subrange <%s..%s>\n",
                $1->c_str(), $3->c_str()); };
 /* -> Structured-types */
-/* structured_type: new_structured_type | structured_type_identifier; */
 new_structured_type: PACKED unpacked_structured_type
                    | unpacked_structured_type;
 unpacked_structured_type: array_type | record_type | set_type | file_type;
@@ -149,13 +148,12 @@ base_type: ordinal_type;
 /* -> File-types */
 file_type: TOKFILE OF component_type;
 /* -> Pointer-types */
-/* pointer_type: new_pointer_type | pointer_type_identifier; */
 new_pointer_type: UPARROW domain_type;
 domain_type: type_identifier;
 
 /* ----------------------------------------------------------------------------
  * Variable declarations */
-variable_declaration_part: | VAR variable_declaration_list SEMICOLON;
+variable_declaration_part: empty | VAR variable_declaration_list SEMICOLON;
 variable_declaration_list: variable_declaration_list SEMICOLON variable_declaration
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
@@ -174,8 +172,7 @@ index_expression_list: index_expression_list COMMA index_expression
 array_variable: variable_access;
 index_expression: expression;
 /* ->-> Field-designators */
-field_designator: record_variable DOT field_specifier
-                | field_designator_identifier;
+field_designator: record_variable DOT field_specifier;
 record_variable: variable_access;
 field_specifier: field_identifier;
 field_identifier: identifier;
@@ -188,18 +185,17 @@ pointer_variable: variable_access;
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
-procedure_and_function_declaration_part: procedure_or_function_declaration_list;
+procedure_and_function_declaration_part: empty
+                                       | procedure_or_function_declaration_list;
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
 procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 /* -> Procedure declarations */
 procedure_declaration: procedure_heading SEMICOLON FORWARD
-                     | procedure_identification SEMICOLON procedure_block
                      | procedure_heading SEMICOLON procedure_block;
 procedure_heading: PROCEDURE identifier formal_parameter_list
                  | PROCEDURE identifier;
-procedure_identification: PROCEDURE procedure_identifier;
 procedure_identifier: identifier;
 procedure_block: block;
 /* -> Function declarations */
@@ -208,7 +204,7 @@ function_declaration: function_heading SEMICOLON FORWARD
                     | function_heading SEMICOLON function_block;
 function_heading: FUNCTION identifier formal_parameter_list COLON result_type
                 | FUNCTION identifier COLON result_type;
-function_identification: FUNCTION function_identifier;
+function_identification: FUNCTION identifier;
 function_identifier: identifier;
 result_type: simple_type_identifier | pointer_type_identifier;
 function_block: block;
@@ -237,7 +233,7 @@ factor_list: factor_list multiplying_operator factor
            | factor;
 factor: variable_access | unsigned_constant | function_designator | set_constructor
       | LPAREN expression RPAREN | NOT factor;
-unsigned_constant: number | string | identifier | NIL;
+unsigned_constant: number | string | NIL;
 set_constructor: LBRACKET member_designator_list RBRACKET
                | LBRACKET RBRACKET;
 member_designator_list: member_designator_list COMMA member_designator
@@ -258,13 +254,14 @@ statement: label COLON simple_statement
          | label COLON structured_statement
          | simple_statement
          | structured_statement;
-simple_statement: | assignment_statement | procedure_statement | goto_statement;
-assignment_statement: variable_access COLEQUAL expression
-                    | function_identifier COLEQUAL expression;
-procedure_statement: procedure_identifier parameter_list;
-parameter_list: | actual_parameter_list
-              | read_parameter_list | readln_parameter_list
-              | write_parameter_list | writeln_parameter_list;
+simple_statement: empty | assignment_statement | procedure_statement | goto_statement;
+assignment_statement: variable_access COLEQUAL expression;
+procedure_statement: READ read_parameter_list
+                   | READLN readln_parameter_list
+                   | WRITE write_parameter_list
+                   | WRITELN writeln_parameter_list
+                   | procedure_identifier parameter_list;
+parameter_list: empty | actual_parameter_list;
 goto_statement: GOTO label;
 /* Structured statements */
 structured_statement: compound_statement | conditional_statement
@@ -305,7 +302,7 @@ read_parameter_list: LPAREN file_variable COMMA variable_access_list RPAREN
                    | LPAREN variable_access_list RPAREN;
 variable_access_list: variable_access_list COMMA variable_access
                     | variable_access;
-readln_parameter_list: | LPAREN readln_variable_access_list RPAREN;
+readln_parameter_list: empty | LPAREN readln_variable_access_list RPAREN;
 readln_variable_access_list: readln_variable_access_list COMMA variable_access
                            | file_variable_or_variable_access;
 file_variable_or_variable_access: file_variable | variable_access;
@@ -316,7 +313,7 @@ write_parameters_list: write_parameters_list COMMA write_parameter
 write_parameter: expression COLON expression COLON expression
                | expression COLON expression
                | expression;
-writeln_parameter_list: | LPAREN writeln_variable_access_list RPAREN;
+writeln_parameter_list: empty | LPAREN writeln_variable_access_list RPAREN;
 writeln_variable_access_list: writeln_variable_access_list COMMA write_parameter
                             | file_variable
                             | write_parameter;
