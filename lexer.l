@@ -116,12 +116,12 @@ string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
 "{"|"(*"                  { BEGIN(comment); }
 <comment>"}"|"*)"         { BEGIN(INITIAL); }
 <comment>\n               ;
-<comment>.                /* eat */;
+<comment>.                ;
 
 [a-z][_a-z0-9]*           { yylval.identv = strdup(yytext); return IDENTIFIER; }
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
-[ \t\r\n]*                /* ignore */;
+[ \t\r\n]*                ;
 .                         { printf("unknown character %c\n", *yytext); }
 
 %%
