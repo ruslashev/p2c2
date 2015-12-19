@@ -92,8 +92,6 @@ type_definition: identifier EQUAL type_denoter SEMICOLON
 type_denoter: type_identifier { printf("type identifier <%s>\n", ($1)->c_str()); }
             | new_type { printf("<new type>\n"); };
 new_type: new_ordinal_type | new_structured_type | new_pointer_type;
-simple_type_identifier: type_identifier;
-pointer_type_identifier: type_identifier;
 type_identifier: identifier;
 /* -> Simple-types */
 ordinal_type: new_ordinal_type | ordinal_type_identifier;
@@ -159,44 +157,43 @@ variable_declaration_list: variable_declaration_list SEMICOLON variable_declarat
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
                     printvector($1); printf("\n"); };
 variable_access: entire_variable_or_function_call | component_variable
-               | identified_variable | buffer_variable;
+               | pointed_variable;
 /* -> Entire variables */
 entire_variable_or_function_call: identifier;
 /* -> Component variables */
 component_variable: indexed_variable | field_designator;
 /* ->-> Indexed-variables */
-indexed_variable: array_variable LBRACKET index_expression_list RBRACKET;
+/* array-variable */
+indexed_variable: variable_access LBRACKET index_expression_list RBRACKET;
 index_expression_list: index_expression_list COMMA index_expression
                      | index_expression;
-array_variable: variable_access;
 index_expression: expression;
 /* ->-> Field-designators */
-field_designator: record_variable DOT field_specifier;
-record_variable: variable_access;
+/* record-variable */
+field_designator: variable_access DOT field_specifier;
 field_specifier: field_identifier;
 field_identifier: identifier;
 /* ->-> Identified-variables */
 /* ->-> Buffer-variables */
-buffer_variable: file_variable UPARROW;
-file_variable: variable_access;
-identified_variable: pointer_variable UPARROW;
-pointer_variable: variable_access;
+pointed_variable: variable_access UPARROW; /* pointer-variable or file-variable */
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
-procedure_and_function_declaration_part: empty
-                                       | procedure_or_function_declaration_list;
+procedure_and_function_declaration_part: empty { puts("no procs or funcs"); }
+                                       | procedure_or_function_declaration_list
+                                       {puts("over");};
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
 procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 /* -> Procedure declarations */
 procedure_declaration: procedure_heading SEMICOLON FORWARD
-                     | procedure_heading SEMICOLON procedure_block;
+                     | procedure_heading SEMICOLON procedure_block
+                     { printf("procedure declaration end\n"); };
 procedure_heading: PROCEDURE identifier formal_parameter_list
-                 { printf("procedure <%s> with params\n", ($2)->c_str()); }
+                 { printf("procedure head <%s> with params\n", ($2)->c_str()); }
                  | PROCEDURE identifier
-                 { printf("procedure <%s> w/o params\n", ($2)->c_str()); };
+                 { printf("procedure head <%s> w/o params\n", ($2)->c_str()); };
 procedure_identifier: identifier;
 procedure_block: block;
 /* -> Function declarations */
@@ -204,10 +201,10 @@ function_declaration: function_heading SEMICOLON FORWARD
                     | function_identification SEMICOLON function_block
                     | function_heading SEMICOLON function_block;
 function_heading: FUNCTION identifier formal_parameter_list COLON type_identifier
-                { printf("function <%s>:<%s> with params\n", ($2)->c_str(),
+                { printf("function head <%s>:<%s> with params\n", ($2)->c_str(),
                     ($5)->c_str()); }
                 | FUNCTION identifier COLON type_identifier
-                { printf("function <%s>:<%s> with params\n", ($2)->c_str(),
+                { printf("function head <%s>:<%s> with params\n", ($2)->c_str(),
                     ($4)->c_str()); };
 function_identification: FUNCTION identifier;
 function_identifier: identifier;
@@ -251,8 +248,7 @@ boolean_expression: expression;
 function_designator: function_identifier LPAREN actual_parameter_list RPAREN;
 actual_parameter_list: actual_parameter_list COMMA actual_parameter
                      | actual_parameter;
-actual_parameter: expression | variable_access | procedure_identifier
-                | function_identifier;
+actual_parameter: expression | variable_access;
 statement: label COLON simple_statement
          | label COLON structured_statement
          | simple_statement
@@ -272,7 +268,8 @@ structured_statement: compound_statement | conditional_statement
 statement_sequence: statement_list;
 statement_list: statement_list SEMICOLON statement
               | statement;
-compound_statement: TOKBEGIN statement_sequence END;
+compound_statement: TOKBEGIN statement_sequence END
+                  { puts("compund statement end"); };
 /* Conditional statements */
 conditional_statement: if_statement | case_statement;
 /* if */
@@ -297,10 +294,11 @@ initial_value: expression;
 final_value: expression;
 /* with statements */
 with_statement: WITH record_variable_list DO statement;
-record_variable_list: record_variable_list COMMA record_variable
-                    | record_variable;
+record_variable_list: record_variable_list COMMA variable_access /* record-variable */
+                    | variable_access; /* record-variable */
 /* Input and output */
-read_parameter_list: LPAREN file_variable COMMA variable_access_list RPAREN
+                          /* file-variable */
+read_parameter_list: LPAREN variable_access COMMA variable_access_list RPAREN
                    | LPAREN variable_access_list RPAREN;
 variable_access_list: variable_access_list COMMA variable_access
                     | variable_access;
@@ -308,7 +306,8 @@ readln_parameter_list: empty | LPAREN readln_variable_access_list RPAREN;
 readln_variable_access_list: readln_variable_access_list COMMA variable_access
                            | file_variable_or_variable_access;
 file_variable_or_variable_access: variable_access;
-write_parameter_list: LPAREN file_variable COMMA write_parameters_list RPAREN
+                          /* file-variable */
+write_parameter_list: LPAREN variable_access COMMA write_parameters_list RPAREN
                     | LPAREN write_parameters_list RPAREN;
 write_parameters_list: write_parameters_list COMMA write_parameter
                      | write_parameter;
@@ -317,7 +316,7 @@ write_parameter: expression COLON expression COLON expression
                | expression;
 writeln_parameter_list: empty | LPAREN writeln_variable_access_list RPAREN;
 writeln_variable_access_list: writeln_variable_access_list COMMA write_parameter
-                            | file_variable
+                            | variable_access /* file-variable */
                             | write_parameter;
 
 statement_part: compound_statement;
