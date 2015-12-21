@@ -52,25 +52,34 @@ identifier: IDENTIFIER { $$ = new std::string($1); /* printf("ident: <%s>\n", $1
 number: NUMBER { $$ = new std::string($1); /* printf("num: <%s>\n", $1); */ };
 string: STRING { $$ = new std::string($1); /* printf("str: <%s>\n", $1); */ };
 
-block: label_declaration_part
-       constant_definition_part
-       type_definition_part
-       variable_declaration_part
+block: label_constant_type_var_list
        procedure_and_function_declaration_part
-       statement_part;
+       statement_part { puts("parsed block"); };
+label_constant_type_var: label_declaration_part
+                       | constant_definition_part
+                       | type_definition_part
+                       | variable_declaration_part;
+label_constant_type_var_list: label_constant_type_var_list label_constant_type_var
+                            | label_constant_type_var;
+
+/* ----------------------------------------------------------------------------
+ * Program */
+program: program_heading SEMICOLON block DOT;
+program_heading: PROGRAM identifier LPAREN identifier_list RPAREN
+                 { printf("program <%s>", $2->c_str()); printvector($4); puts(""); }
+               | PROGRAM identifier { printf("program <%s>\n", $2->c_str()); };
+
 
 /* ----------------------------------------------------------------------------
  * Label declarations */
-label_declaration_part: empty { puts("no labels"); }
-                      | LABEL label_list LABELSEMICOLON;
+label_declaration_part: LABEL label_list LABELSEMICOLON;
 label_list: label_list LABELCOMMA label
           | label;
 label: LABELN { printf("label %s\n", $1); }
 
 /* ----------------------------------------------------------------------------
  * Constant definitions */
-constant_definition_part: empty { puts("no consts"); }
-                        | CONST constant_definition_list SEMICOLON;
+constant_definition_part: CONST constant_definition_list SEMICOLON;
 constant_definition_list: constant_definition_list SEMICOLON constant_definition
                         | constant_definition;
 constant_definition: identifier EQUAL constant
@@ -85,8 +94,7 @@ sign: PLUS { $$ = new std::string($1, strlen($1)); }
 
 /* ----------------------------------------------------------------------------
  * Type definitions */
-type_definition_part: empty { puts("no types"); }
-                    | TYPE type_definition_list
+type_definition_part: TYPE type_definition_list
 type_definition_list: type_definition_list type_definition
                     | type_definition;
 type_definition: identifier EQUAL type_denoter SEMICOLON
@@ -153,7 +161,7 @@ domain_type: type_identifier;
 
 /* ----------------------------------------------------------------------------
  * Variable declarations */
-variable_declaration_part: empty | VAR variable_declaration_list SEMICOLON;
+variable_declaration_part:  VAR variable_declaration_list SEMICOLON;
 variable_declaration_list: variable_declaration_list SEMICOLON variable_declaration
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
@@ -296,15 +304,6 @@ record_variable_list: record_variable_list COMMA variable_access /* record-varia
                     | variable_access; /* record-variable */
 
 statement_part: compound_statement;
-
-/* ----------------------------------------------------------------------------
- * Program */
-program: program_heading SEMICOLON program_block DOT;
-program_heading: PROGRAM identifier LPAREN program_parameter_list RPAREN
-                 { printf("program <%s>\n", $2->c_str()); }
-               | PROGRAM identifier { printf("program <%s>\n", $2->c_str()); };
-program_parameter_list: identifier_list;
-program_block: block;
 
 %%
 
