@@ -34,11 +34,13 @@ extern "C" int yylex();
 %token <strv> STRING;
 %token LABEL LABELCOMMA LABELSEMICOLON;
 %token <labelv> LABELN;
-%token READ WRITE READLN WRITELN
 
 %type <string> identifier number string sign label constant;
 %type <string> type_identifier type_denoter;
 %type <strvector> identifier_list;
+
+%nonassoc simple_if
+%nonassoc ELSE
 
 %start program
 
@@ -117,14 +119,14 @@ index_type: ordinal_type;
 component_type: type_denoter;
 /* -> Record-types */
 record_type: RECORD field_list END;
-field_list: fixed_part SEMICOLON variant_part SEMICOLON
-          | fixed_part SEMICOLON variant_part
-          | fixed_part SEMICOLON
-          | fixed_part
+          /* fixed-part -> record-section-list */
+field_list: record_section_list SEMICOLON variant_part SEMICOLON
+          | record_section_list SEMICOLON variant_part
+          | record_section_list SEMICOLON
+          | record_section_list
           | variant_part SEMICOLON
           | variant_part
-          | /* empty */ ;
-fixed_part: record_section_list;
+          | empty;
 record_section_list: record_section_list SEMICOLON record_section
                    | record_section;
 record_section: identifier_list COLON type_denoter;
@@ -194,7 +196,6 @@ procedure_heading: PROCEDURE identifier formal_parameter_list
                  { printf("procedure head <%s> with params\n", ($2)->c_str()); }
                  | PROCEDURE identifier
                  { printf("procedure head <%s> w/o params\n", ($2)->c_str()); };
-procedure_identifier: identifier;
 procedure_block: block;
 /* -> Function declarations */
 function_declaration: function_heading SEMICOLON FORWARD
@@ -246,21 +247,18 @@ adding_operator: PLUS | MINUS | OR;
 relational_operator: EQUAL | LTGT | LT | GT | LTE | GTE | IN;
 boolean_expression: expression;
 function_designator: function_identifier LPAREN actual_parameter_list RPAREN;
-actual_parameter_list: actual_parameter_list COMMA actual_parameter
+actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN;
+actual_parameter_list_aux: actual_parameter_list_aux COMMA actual_parameter
                      | actual_parameter;
-actual_parameter: expression | variable_access;
+actual_parameter: expression;
 statement: label COLON simple_statement
          | label COLON structured_statement
          | simple_statement
          | structured_statement;
 simple_statement: empty | assignment_statement | procedure_statement | goto_statement;
 assignment_statement: variable_access COLEQUAL expression;
-procedure_statement: READ read_parameter_list
-                   | READLN readln_parameter_list
-                   | WRITE write_parameter_list
-                   | WRITELN writeln_parameter_list
-                   | procedure_identifier parameter_list;
-parameter_list: empty | actual_parameter_list;
+procedure_statement: identifier actual_parameter_list
+                   { printf("parsed proc stmt <%s>\n", ($1)->c_str()); };
 goto_statement: GOTO label;
 /* Structured statements */
 structured_statement: compound_statement | conditional_statement
@@ -273,9 +271,9 @@ compound_statement: TOKBEGIN statement_sequence END
 /* Conditional statements */
 conditional_statement: if_statement | case_statement;
 /* if */
-if_statement: IF boolean_expression THEN statement else_part
-            | IF boolean_expression THEN statement;
-else_part: ELSE statement;
+if_statement: if_then %prec simple_if { puts("parsed if"); }
+            | if_then ELSE statement { puts("parsed if-else"); };
+if_then: IF boolean_expression THEN statement;
 /* case */
 case_statement: CASE case_index OF case_list_element_list SEMICOLON END
               | CASE case_index OF case_list_element_list END
@@ -296,28 +294,6 @@ final_value: expression;
 with_statement: WITH record_variable_list DO statement;
 record_variable_list: record_variable_list COMMA variable_access /* record-variable */
                     | variable_access; /* record-variable */
-/* Input and output */
-                          /* file-variable */
-read_parameter_list: LPAREN variable_access COMMA variable_access_list RPAREN
-                   | LPAREN variable_access_list RPAREN;
-variable_access_list: variable_access_list COMMA variable_access
-                    | variable_access;
-readln_parameter_list: empty | LPAREN readln_variable_access_list RPAREN;
-readln_variable_access_list: readln_variable_access_list COMMA variable_access
-                           | file_variable_or_variable_access;
-file_variable_or_variable_access: variable_access;
-                          /* file-variable */
-write_parameter_list: LPAREN variable_access COMMA write_parameters_list RPAREN
-                    | LPAREN write_parameters_list RPAREN;
-write_parameters_list: write_parameters_list COMMA write_parameter
-                     | write_parameter;
-write_parameter: expression COLON expression COLON expression
-               | expression COLON expression
-               | expression;
-writeln_parameter_list: empty | LPAREN writeln_variable_access_list RPAREN;
-writeln_variable_access_list: writeln_variable_access_list COMMA write_parameter
-                            | variable_access /* file-variable */
-                            | write_parameter;
 
 statement_part: compound_statement;
 
