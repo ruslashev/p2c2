@@ -10,7 +10,6 @@ all:
 	$(CXX) -c -o .lexer.o lexer.cc $(CXXFLAGS)
 	$(CXX) -c -o .main.o main.cc $(CXXFLAGS)
 	$(CXX) -o p2c2 .lexer.o .parser.o .main.o
-	./p2c2
 
 clean:
 	rm -f $(EXECNAME)
@@ -23,3 +22,7 @@ test: all
 	./p2c2 quicksort.pas
 	@echo "tri.pas ======================================================================="
 	./p2c2 tri.pas
+
+vi:
+	vim lexer.l parser.y parser.output *.pas -p
+
