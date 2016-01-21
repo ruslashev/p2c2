@@ -36,7 +36,7 @@ extern "C" int yylex();
 %token <labelv> LABELN;
 
 %type <string> identifier number string sign label constant;
-%type <string> type_identifier type_denoter;
+%type <string> type_identifier type_denoter entire_variable_or_function_call;
 %type <strvector> identifier_list;
 
 %nonassoc simple_if
@@ -139,7 +139,6 @@ field_list: record_section_list SEMICOLON variant_part SEMICOLON
 record_section_list: record_section_list SEMICOLON record_section
                    | record_section;
 record_section: identifier_list COLON type_denoter;
-/* field_identifier: identifier; */
 variant_part: CASE variant_selector OF variant_list;
 variant_list: variant_list SEMICOLON variant
             | variant;
@@ -161,7 +160,8 @@ new_pointer_type: UPARROW domain_type;
 domain_type: type_identifier;
 
 /* ----------------------------------------------------------------------------
- * Variable declarations */
+ * Declarations and denotations of variables */
+/* Variable declarations */
 variable_declaration_part: empty { puts("(no var decls)"); }
                          | VAR variable_declaration_list SEMICOLON
                          { puts("(parsed var decls)"); };
@@ -171,28 +171,23 @@ variable_declaration: identifier_list COLON type_denoter { printf("variables ");
                     printvector($1); printf("\n"); };
 variable_access: entire_variable_or_function_call { puts("(variable_access)"); }
                | component_variable
-               | pointed_variable;
-/* -> Entire variables */
+               | buffer_variable;
+/* Entire variables */
 entire_variable_or_function_call: identifier
-                                { puts("(entire_variable_or_function_call)"); };
-/* -> Component variables */
+  { printf("(entire_variable_or_function_call <%s>)\n", ($1)->c_str()); };
+/* Component variables */
 component_variable: indexed_variable | field_designator;
-/* ->-> Indexed-variables */
-/* array-variable */
+/* -> Indexed-variables */
 indexed_variable: variable_access LBRACKET index_expression_list RBRACKET
                 { puts("(indexed_variable)"); };
 index_expression_list: index_expression_list COMMA index_expression
                      | index_expression;
 index_expression: expression;
-/* ->-> Field-designators */
-/* record-variable */
-field_designator: variable_access DOT field_specifier { puts("(field_designator)"); };
-field_specifier: field_identifier;
-field_identifier: identifier;
-/* ->-> Identified-variables */
-/* ->-> Buffer-variables */
-pointed_variable: variable_access UPARROW
-                { puts("(pointed_variable)"); }; /* pointer-variable or file-variable */
+/* -> Field-designators */
+field_designator: variable_access DOT identifier { puts("(field_designator)"); };
+/* Buffer-variables */
+buffer_variable: variable_access UPARROW
+               { puts("(buffer_variable)"); }; /* pointer-variable or file-variable */
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
@@ -203,29 +198,32 @@ procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
 procedure_or_funcion_declaration: procedure_declaration | function_declaration;
-/* -> Procedure declarations */
+/* Procedure declarations */
 procedure_declaration: procedure_heading SEMICOLON FORWARD
                      | procedure_heading SEMICOLON procedure_block
-                     { printf("procedure declaration end\n"); };
+                     { puts("procedure declaration end"); };
 procedure_heading: PROCEDURE identifier formal_parameter_list
                  { printf("procedure head <%s> with params\n", ($2)->c_str()); }
                  | PROCEDURE identifier
                  { printf("procedure head <%s> w/o params\n", ($2)->c_str()); };
 procedure_block: block;
-/* -> Function declarations */
+/* Function declarations */
 function_declaration: function_heading SEMICOLON FORWARD
                     | function_identification SEMICOLON function_block
-                    | function_heading SEMICOLON function_block;
+                     { puts("function declaration end"); }
+                    | function_heading SEMICOLON function_block
+                     { puts("function declaration end"); };
 function_heading: FUNCTION identifier formal_parameter_list COLON type_identifier
-                { printf("function head <%s>:<%s> with params\n", ($2)->c_str(),
-                    ($5)->c_str()); }
+                { printf("function head <%s>:<%s> with params\n",
+                ($2)->c_str(), ($5)->c_str()); }
                 | FUNCTION identifier COLON type_identifier
-                { printf("function head <%s>:<%s> with params\n", ($2)->c_str(),
-                    ($4)->c_str()); };
-function_identification: FUNCTION identifier;
+                { printf("function head <%s>:<%s> with no params\n",
+                ($2)->c_str(), ($4)->c_str()); };
+function_identification: FUNCTION identifier
+                       { printf("function ident <%s>\n", ($2)->c_str()); };
 function_identifier: identifier;
 function_block: block;
-/* ->-> Parameters */
+/* Parameters */
 formal_parameter_list: LPAREN formal_parameter_section_list RPAREN;
 formal_parameter_section_list: formal_parameter_section_list SEMICOLON
                                formal_parameter_section
