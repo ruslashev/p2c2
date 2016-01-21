@@ -52,16 +52,12 @@ identifier: IDENTIFIER { $$ = new std::string($1); };
 number: NUMBER { $$ = new std::string($1); };
 string: STRING { $$ = new std::string($1); };
 
-block: label_constant_type_var_list
+block: label_declaration_part
+       constant_definition_part
+       type_definition_part
+       variable_declaration_part
        procedure_and_function_declaration_part
        statement_part { puts("parsed block"); };
-label_constant_type_var: empty { puts("(no labels, consts, defs and var decls)"); }
-                       | label_declaration_part { puts("(labels)"); }
-                       | constant_definition_part { puts("(constants)"); }
-                       | type_definition_part { puts("(type defs)"); }
-                       | variable_declaration_part { puts("(var decls)"); };
-label_constant_type_var_list: label_constant_type_var_list label_constant_type_var
-                            | label_constant_type_var;
 
 /* ----------------------------------------------------------------------------
  * Program */
@@ -73,14 +69,17 @@ program_heading: PROGRAM identifier LPAREN identifier_list RPAREN
 
 /* ----------------------------------------------------------------------------
  * Label declarations */
-label_declaration_part: LABEL label_list LABELSEMICOLON;
+label_declaration_part: empty { puts("(no labels)"); }
+                      | LABEL label_list LABELSEMICOLON { puts("(parsed labels)"); };
 label_list: label_list LABELCOMMA label
           | label;
 label: LABELN { printf("label %s\n", $1); }
 
 /* ----------------------------------------------------------------------------
  * Constant definitions */
-constant_definition_part: CONST constant_definition_list SEMICOLON;
+constant_definition_part: empty { puts("(no consts)"); }
+                        | CONST constant_definition_list SEMICOLON
+                        { puts("(parsed consts)"); };
 constant_definition_list: constant_definition_list SEMICOLON constant_definition
                         | constant_definition;
 constant_definition: identifier EQUAL constant
@@ -95,7 +94,8 @@ sign: PLUS { $$ = new std::string($1, strlen($1)); }
 
 /* ----------------------------------------------------------------------------
  * Type definitions */
-type_definition_part: TYPE type_definition_list
+type_definition_part: empty { puts("(no type defs)"); }
+                    | TYPE type_definition_list { puts("(parsed type defs)"); };
 type_definition_list: type_definition_list type_definition
                     | type_definition;
 type_definition: identifier EQUAL type_denoter SEMICOLON
@@ -162,7 +162,9 @@ domain_type: type_identifier;
 
 /* ----------------------------------------------------------------------------
  * Variable declarations */
-variable_declaration_part:  VAR variable_declaration_list SEMICOLON;
+variable_declaration_part: empty { puts("(no var decls)"); }
+                         | VAR variable_declaration_list SEMICOLON
+                         { puts("(parsed var decls)"); };
 variable_declaration_list: variable_declaration_list SEMICOLON variable_declaration
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
@@ -196,7 +198,7 @@ pointed_variable: variable_access UPARROW
  * Procedure and function declarations */
 procedure_and_function_declaration_part: empty { puts("(no procs or funcs)"); }
                                        | procedure_or_function_declaration_list
-                                       { puts("(procs and functions)"); };
+                                       { puts("(parsed procs and functions)"); };
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
@@ -252,7 +254,7 @@ factor: variable_access
       | set_constructor
       | LPAREN expression RPAREN
       | NOT factor;
-unsigned_constant: number | string | NIL | identifier;
+unsigned_constant: number | string | NIL;
 set_constructor: LBRACKET member_designator_list RBRACKET
                | LBRACKET RBRACKET;
 member_designator_list: member_designator_list COMMA member_designator

@@ -1,6 +1,6 @@
 program ye(wyt, what);
-const lmax = 20;
 label 420, 2517;
+const lmax = 20;
 type
   natural = 0..maxint;
   count = integer;
