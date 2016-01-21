@@ -48,17 +48,18 @@ extern "C" int yylex();
 
 empty: ;
 
-identifier: IDENTIFIER { $$ = new std::string($1); /* printf("ident: <%s>\n", $1); */ };
-number: NUMBER { $$ = new std::string($1); /* printf("num: <%s>\n", $1); */ };
-string: STRING { $$ = new std::string($1); /* printf("str: <%s>\n", $1); */ };
+identifier: IDENTIFIER { $$ = new std::string($1); };
+number: NUMBER { $$ = new std::string($1); };
+string: STRING { $$ = new std::string($1); };
 
 block: label_constant_type_var_list
        procedure_and_function_declaration_part
        statement_part { puts("parsed block"); };
-label_constant_type_var: label_declaration_part
-                       | constant_definition_part
-                       | type_definition_part
-                       | variable_declaration_part;
+label_constant_type_var: empty { puts("(no labels, consts, defs and var decls)"); }
+                       | label_declaration_part { puts("(labels)"); }
+                       | constant_definition_part { puts("(constants)"); }
+                       | type_definition_part { puts("(type defs)"); }
+                       | variable_declaration_part { puts("(var decls)"); };
 label_constant_type_var_list: label_constant_type_var_list label_constant_type_var
                             | label_constant_type_var;
 
@@ -108,8 +109,8 @@ ordinal_type: new_ordinal_type | ordinal_type_identifier;
 new_ordinal_type: enumerated_type | subrange_type;
 ordinal_type_identifier: type_identifier;
 /* -> Enumerated-types */
-enumerated_type: LPAREN identifier_list RPAREN { printf("enumerated type ");
-               printvector($2); puts(""); };
+enumerated_type: LPAREN identifier_list RPAREN { printf("(enumerated type ");
+               printvector($2); puts(")"); };
 identifier_list: identifier_list COMMA identifier { $$->push_back($3); }
                | identifier { $$ = new std::vector<std::string*>; $$->push_back($1); };
 /* -> Subrange-types */
@@ -166,32 +167,36 @@ variable_declaration_list: variable_declaration_list SEMICOLON variable_declarat
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
                     printvector($1); printf("\n"); };
-variable_access: entire_variable_or_function_call | component_variable
+variable_access: entire_variable_or_function_call { puts("(variable_access)"); }
+               | component_variable
                | pointed_variable;
 /* -> Entire variables */
-entire_variable_or_function_call: identifier;
+entire_variable_or_function_call: identifier
+                                { puts("(entire_variable_or_function_call)"); };
 /* -> Component variables */
 component_variable: indexed_variable | field_designator;
 /* ->-> Indexed-variables */
 /* array-variable */
-indexed_variable: variable_access LBRACKET index_expression_list RBRACKET;
+indexed_variable: variable_access LBRACKET index_expression_list RBRACKET
+                { puts("(indexed_variable)"); };
 index_expression_list: index_expression_list COMMA index_expression
                      | index_expression;
 index_expression: expression;
 /* ->-> Field-designators */
 /* record-variable */
-field_designator: variable_access DOT field_specifier;
+field_designator: variable_access DOT field_specifier { puts("(field_designator)"); };
 field_specifier: field_identifier;
 field_identifier: identifier;
 /* ->-> Identified-variables */
 /* ->-> Buffer-variables */
-pointed_variable: variable_access UPARROW; /* pointer-variable or file-variable */
+pointed_variable: variable_access UPARROW
+                { puts("(pointed_variable)"); }; /* pointer-variable or file-variable */
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
-procedure_and_function_declaration_part: empty { puts("no procs or funcs"); }
+procedure_and_function_declaration_part: empty { puts("(no procs or funcs)"); }
                                        | procedure_or_function_declaration_list
-                                       {puts("over");};
+                                       { puts("(procs and functions)"); };
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
@@ -241,9 +246,13 @@ term_list: term_list adding_operator term
 term: factor_list;
 factor_list: factor_list multiplying_operator factor
            | factor;
-factor: variable_access | unsigned_constant | function_designator | set_constructor
-      | LPAREN expression RPAREN | NOT factor;
-unsigned_constant: number | string | NIL;
+factor: variable_access
+      | unsigned_constant
+      | function_designator
+      | set_constructor
+      | LPAREN expression RPAREN
+      | NOT factor;
+unsigned_constant: number | string | NIL | identifier;
 set_constructor: LBRACKET member_designator_list RBRACKET
                | LBRACKET RBRACKET;
 member_designator_list: member_designator_list COMMA member_designator
@@ -251,20 +260,22 @@ member_designator_list: member_designator_list COMMA member_designator
 member_designator: expression ELLIPSIS expression
                  | expression;
 multiplying_operator: ASTERISK | SLASH | DIV | MOD | AND;
-adding_operator: PLUS | MINUS | OR;
+adding_operator: PLUS | MINUS | OR { puts("(adding_operator)"); };
 relational_operator: EQUAL | LTGT | LT | GT | LTE | GTE | IN;
 boolean_expression: expression;
-function_designator: function_identifier LPAREN actual_parameter_list RPAREN;
+function_designator: function_identifier LPAREN actual_parameter_list RPAREN
+                   { puts("(function designator)"); };
 actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN;
 actual_parameter_list_aux: actual_parameter_list_aux COMMA actual_parameter
                      | actual_parameter;
-actual_parameter: expression;
+actual_parameter: expression { puts("actual_parameter"); };/* variable_access | procedure_identifier */
 statement: label COLON simple_statement
          | label COLON structured_statement
          | simple_statement
          | structured_statement;
 simple_statement: empty | assignment_statement | procedure_statement | goto_statement;
-assignment_statement: variable_access COLEQUAL expression;
+assignment_statement: variable_access COLEQUAL expression
+                    { puts("(assignment_statement)"); };
 procedure_statement: identifier actual_parameter_list
                    { printf("parsed proc stmt <%s>\n", ($1)->c_str()); };
 goto_statement: GOTO label;
@@ -275,18 +286,19 @@ statement_sequence: statement_list;
 statement_list: statement_list SEMICOLON statement
               | statement;
 compound_statement: TOKBEGIN statement_sequence END
-                  { puts("compund statement end"); };
+                  { puts("(compund statement end)"); };
 /* Conditional statements */
-conditional_statement: if_statement | case_statement;
+conditional_statement: if_statement | case_statement { puts("(conditional_statement)"); };
 /* if */
 if_statement: if_then %prec simple_if { puts("parsed if"); }
             | if_then ELSE statement { puts("parsed if-else"); };
 if_then: IF boolean_expression THEN statement;
 /* case */
 case_statement: CASE case_index OF case_list_element_list SEMICOLON END
-              | CASE case_index OF case_list_element_list END
+              { puts("(case with ;)"); }
+              | CASE case_index OF case_list_element_list END { puts("(case w/o ;)"); }
 case_list_element_list: case_list_element_list SEMICOLON case_list_element
-                      | case_list_element;
+                      | case_list_element { puts("(case_list_element_list)"); };
 case_list_element: case_constant_list COLON statement;
 case_index: expression;
 /* repetetive statements */
