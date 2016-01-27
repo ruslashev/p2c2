@@ -61,7 +61,8 @@ block: label_declaration_part
 
 /* ----------------------------------------------------------------------------
  * Program */
-program: program_heading SEMICOLON block DOT;
+program: program_heading SEMICOLON block DOT { green();
+       puts("<parsed program>"); reset(); };
 program_heading: PROGRAM identifier LPAREN identifier_list RPAREN
                  { printf("program <%s>", $2->c_str()); printvector($4); puts(""); }
                | PROGRAM identifier { printf("program <%s>\n", $2->c_str()); };
@@ -131,7 +132,6 @@ index_type: ordinal_type;
 component_type: type_denoter;
 /* -> Record-types */
 record_type: RECORD field_list END;
-          /* fixed_part -> record_section_list */
 field_list: record_section_list SEMICOLON variant_part SEMICOLON
           | record_section_list SEMICOLON variant_part
           | record_section_list SEMICOLON
@@ -230,23 +230,14 @@ formal_parameter_list: LPAREN formal_parameter_section_list RPAREN;
 formal_parameter_section_list: formal_parameter_section_list SEMICOLON
                                formal_parameter_section
                              | formal_parameter_section;
-formal_parameter_section: conformant_array_parameter_specification;
-conformant_array_parameter_specification: value_conformant_array_specification
-                                        | variable_conformant_array_specification;
-value_conformant_array_specification: identifier_list COLON conformant_array_schema;
-variable_conformant_array_specification: VAR identifier_list COLON conformant_array_schema;
-conformant_array_schema: packed_conformant_array_schema
-                       | unpacked_conformant_array_schema
-packed_conformant_array_schema: PACKED ARRAY LBRACKET index_type_specification
-                              RBRACKET OF type_identifier;
-unpacked_conformant_array_schema: ARRAY LBRACKET index_type_specification_list
-                              RBRACKET OF type_identifier
-                              | ARRAY LBRACKET index_type_specification_list
-                              RBRACKET OF conformant_array_schema;
-index_type_specification_list: index_type_specification_list SEMICOLON
-                             index_type_specification
-                             | index_type_specification;
-index_type_specification: identifier ELLIPSIS identifier COLON ordinal_type_identifier;
+formal_parameter_section: value_parameter_specification
+                        | variable_parameter_specification
+                        | procedural_parameter_specification
+                        | functional_parameter_specification;
+value_parameter_specification: identifier_list COLON type_identifier;
+variable_parameter_specification: VAR identifier_list COLON type_identifier;
+procedural_parameter_specification: procedure_heading;
+functional_parameter_specification: function_heading;
 /* Expression */
 expression: simple_expression relational_operator simple_expression
           | simple_expression;
@@ -257,12 +248,21 @@ term_list: term_list adding_operator term
 term: factor_list;
 factor_list: factor_list multiplying_operator factor
            | factor;
-factor: identifier;
+/* factor: identifier; */ /* Level 1 compliance */
+factor: variable_access | unsigned_constant | function_designator |
+      set_constructor | LPAREN expression RPAREN | NOT factor;
+unsigned_constant: number | string | NIL;
+set_constructor: RBRACKET member_designator_list LBRACKET;
+member_designator_list: member_designator_list COMMA member_designator
+                      | member_designator;
+member_designator: expression ELLIPSIS expression
+                 | expression;
 multiplying_operator: ASTERISK | SLASH | DIV | MOD | AND;
 adding_operator: PLUS | MINUS | OR;
 relational_operator: EQUAL | LTGT | LT | GT | LTE | GTE | IN;
 boolean_expression: expression;
 /* Function designators */
+function_designator: identifier actual_parameter_list; /* divergence from standard */
 actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN;
 actual_parameter_list_aux: actual_parameter_list_aux COMMA actual_parameter
                      | actual_parameter;

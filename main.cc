@@ -50,5 +50,15 @@ void printvector(std::vector<std::string*> *v)
   printf("%s]", (v->at(v->size()-1))->c_str());
 }
 
+void green()
+{
+  fputs("\x1b[32m", stdout);
+}
+
+void reset()
+{
+  fputs("\x1b[0m", stdout);
+}
+
 // vim: et:ts=2:sw=2
 
