@@ -27,7 +27,7 @@ fractional_part {digit_sequence}
 scale_factor {sign}?{digit_sequence}
 digit_sequence {digit}+
 
-sign [+\-]
+sign [\-]
 digit [0-9]
 
 label {digit_sequence}
