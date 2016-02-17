@@ -32,7 +32,7 @@ digit [0-9]
 
 label {digit_sequence}
 
-string_element [a-z0-9 !@#$%^&*()_\-=+\[\]{};:",.<>/?\\]|"''"
+string_element [^']|"''"
 
 %%
 

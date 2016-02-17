@@ -15,7 +15,7 @@ make
 
 if [[ $? -eq 0 ]]; then
 	if [[ $# -eq 0 ]]; then
-		for f in $(ls *.pas); do
+		for f in $(ls test/*.pas); do
 			print_for_file "$f"
 		done
 	else
