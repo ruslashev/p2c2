@@ -196,15 +196,17 @@ buffer_variable: variable_access UPARROW
  * Procedure and function declarations */
 procedure_and_function_declaration_part: empty { puts("(no procs or funcs)"); }
                                        | procedure_or_function_declaration_list
+                                       optional_semicolon
                                        { puts("(parsed procs and functions)"); };
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
+optional_semicolon: empty | SEMICOLON;
 procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 /* Procedure declarations */
 procedure_declaration: procedure_heading SEMICOLON FORWARD
                      | procedure_heading SEMICOLON procedure_block
-                     { puts("procedure declaration end"); };
+                     { puts("(parsed procedure declaration)"); };
 procedure_heading: PROCEDURE identifier formal_parameter_list
                  { printf("procedure head <%s> with params\n", ($2)->c_str()); }
                  | PROCEDURE identifier
