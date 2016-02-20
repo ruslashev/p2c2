@@ -268,7 +268,10 @@ function_designator: identifier actual_parameter_list; /* divergence from standa
 actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN;
 actual_parameter_list_aux: actual_parameter_list_aux COMMA actual_parameter
                      | actual_parameter;
-actual_parameter: expression { puts("actual_parameter"); };
+actual_parameter: two_expressions COLON expression
+                | two_expressions
+                | expression;
+two_expressions: expression COLON expression;
 
 /* ----------------------------------------------------------------------------
  * Statements */

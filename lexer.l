@@ -32,7 +32,7 @@ digit [0-9]
 
 label {digit_sequence}
 
-string_element [^']|"''"
+string_element [^'\n]|"''"
 
 %%
 
@@ -107,7 +107,6 @@ string_element [^']|"''"
 <string>{string_element}+ { yylval.strv = strdup(yytext); return STRING; }
 <string>"'"               { BEGIN(INITIAL); }
 <string>\n                { yyerror("string cannot contain newline"); }
-<string>.                 { printf("unhandled character in string: %c\n", *yytext); }
 
 "{"|"(*"                  { BEGIN(comment); }
 <comment>"}"|"*)"         { BEGIN(INITIAL); }
@@ -121,6 +120,9 @@ string_element [^']|"''"
 .                         { printf("unknown character %c\n", *yytext); }
 
 %%
+/*
+<string>.                 { printf("unhandled character in string: %c\n", *yytext); }
+ */
 
 // vim: et:ts=2:sw=2
 
