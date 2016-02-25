@@ -4,10 +4,10 @@ type arr = array [1..lmax] of real;
 var i, n : integer; nr : real; a : arr;
 
 procedure uniq(var n : integer; var a : arr);
-var nn, j : integer; na : arr;
+var nn, j, i : integer; na : arr;
 begin
   nn := 0;
-  for i : integer := 1 to n do begin
+  for i := 1 to n do begin
     j := 1;
     while (j <= nn) and (a[i] <> na[j]) do
       inc(j);
@@ -21,12 +21,12 @@ begin
 end;
 
 procedure countRepeats(n : integer; var a : arr);
-var reps, nn : integer; uniq : arr;
+var reps, nn, i, j : integer; uniq : arr;
 begin
-  for i : integer := 1 to n do begin
+  for i := 1 to n do begin
     write('a[', i:2, '] = ', a[i]:2, ' ; ');
     reps := 0;
-    for j : integer := 1 to n do
+    for j := 1 to n do
       if (i <> j) and (a[i] = a[j]) then
         inc(reps);
     writeln('встречается раз: ', reps);

@@ -172,25 +172,21 @@ variable_declaration_list: variable_declaration_list SEMICOLON variable_declarat
                          | variable_declaration;
 variable_declaration: identifier_list COLON type_denoter { printf("variables ");
                     printvector($1); printf("\n"); };
-variable_access: entire_variable { puts("(variable_access)"); }
-               | component_variable
-               | buffer_variable;
+variable_access: entire_variable
+               | variable_access LBRACKET index_expression_list RBRACKET { puts("(indexed_variable)"); }
+               /* indexed-variable */
+               | variable_access DOT identifier { puts("(field_designator)"); }
+               /* field-designator */
+               | variable_access UPARROW { puts("(buffer_variable)"); }
+               /* buffer-variable, pointer-variable or file-variable */
+               ;
 /* Entire variables */
 entire_variable: identifier
   { printf("(entire_variable <%s>)\n", ($1)->c_str()); };
-/* Component variables */
-component_variable: indexed_variable | field_designator;
 /* -> Indexed-variables */
-indexed_variable: variable_access LBRACKET index_expression_list RBRACKET
-                { puts("(indexed_variable)"); };
 index_expression_list: index_expression_list COMMA index_expression
                      | index_expression;
 index_expression: expression;
-/* -> Field-designators */
-field_designator: variable_access DOT identifier { puts("(field_designator)"); };
-/* Buffer-variables */
-buffer_variable: variable_access UPARROW
-               { puts("(buffer_variable)"); }; /* pointer-variable or file-variable */
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
@@ -236,8 +232,8 @@ formal_parameter_section: value_parameter_specification
                         | variable_parameter_specification
                         | procedural_parameter_specification
                         | functional_parameter_specification;
-value_parameter_specification: identifier_list COLON type_identifier;
-variable_parameter_specification: VAR identifier_list COLON type_identifier;
+value_parameter_specification: identifier_list COLON type_denoter; /* deviation */
+variable_parameter_specification: VAR identifier_list COLON type_denoter;
 procedural_parameter_specification: procedure_heading;
 functional_parameter_specification: function_heading;
 /* Expression */
@@ -254,7 +250,7 @@ factor_list: factor_list multiplying_operator factor
 factor: variable_access | unsigned_constant | function_designator |
       set_constructor | LPAREN expression RPAREN | NOT factor;
 unsigned_constant: number | string | NIL;
-set_constructor: RBRACKET member_designator_list LBRACKET;
+set_constructor: LBRACKET member_designator_list RBRACKET;
 member_designator_list: member_designator_list COMMA member_designator
                       | member_designator;
 member_designator: expression ELLIPSIS expression
