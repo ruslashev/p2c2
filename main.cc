@@ -42,12 +42,29 @@ void die(const char *format, ...)
   exit(0);
 }
 
+const bool debug = false;
+
+void dputs(std::string s)
+{
+  if (debug)
+    puts(s.c_str());
+}
+
+void dprintf(const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  if (debug)
+    vprintf(format, args);
+  va_end(args);
+}
+
 void printvector(std::vector<std::string*> *v)
 {
-  printf("[");
+  dprintf("[");
   for (size_t i = 0; i < v->size()-1; i++)
-    printf("%s, ", (v->at(i))->c_str());
-  printf("%s]", (v->at(v->size()-1))->c_str());
+    dprintf("%s, ", (v->at(i))->c_str());
+  dprintf("%s]", (v->at(v->size()-1))->c_str());
 }
 
 void green()

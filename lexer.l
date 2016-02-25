@@ -13,6 +13,7 @@
 
 %x string
 %x comment
+%x line_comment
 %x label
 
 letter [a-z]
@@ -112,6 +113,10 @@ string_element [^'\n]|"''"
 <comment>"}"|"*)"         { BEGIN(INITIAL); }
 <comment>\n               ;
 <comment>.                ;
+
+"//"                      { BEGIN(line_comment); }
+<line_comment>\n          { BEGIN(INITIAL); }
+<line_comment>.           ;
 
 [a-z][_a-z0-9\-]*         { yylval.identv = strdup(yytext); return IDENTIFIER; }
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }

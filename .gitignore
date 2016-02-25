@@ -4,4 +4,5 @@ lexer.cc
 parser.cc
 parser.hh
 parser.output
+test/turbo-pascal-archive/*
 
