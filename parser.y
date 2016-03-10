@@ -1,6 +1,5 @@
 %{
 #include <string>
-#include <fstream>
 #include <cstring>
 #include <vector>
 
@@ -65,7 +64,7 @@ block: label_declaration_part
 /* ----------------------------------------------------------------------------
  * Program */
 program: optional_program_heading block DOT
-       { green(); puts("<parsed program>"); reset(); };
+       { green(); dputs("<parsed program>"); reset(); };
 program_heading: PROGRAM identifier LPAREN identifier_list RPAREN
                  { dprintf("program <%s>", $2->c_str()); printvector($4); dputs(""); }
                | PROGRAM identifier { dprintf("program <%s>\n", $2->c_str()); };
@@ -106,18 +105,18 @@ type_definition_list: type_definition_list type_definition
                     | type_definition;
 /* General */
 type_definition: identifier EQUAL type_denoter SEMICOLON
-                 { printf("type <%s>\n", ($1)->c_str()); };
-type_denoter: identifier { printf("type identifier <%s>\n", ($1)->c_str()); }
+                 { dprintf("type <%s>\n", ($1)->c_str()); };
+type_denoter: identifier { dprintf("type identifier <%s>\n", ($1)->c_str()); }
             | new_ordinal_type
             | new_structured_type
-            | new_pointer_type { printf("<new type>\n"); };
+            | new_pointer_type { dprintf("<new type>\n"); };
 /* Simple types */
 /* -> General */
 ordinal_type: new_ordinal_type | identifier;
 new_ordinal_type: enumerated_type | subrange_type;
 /* -> Enumerated types */
-enumerated_type: LPAREN identifier_list RPAREN { printf("(enumerated type ");
-               printvector($2); puts(")"); };
+enumerated_type: LPAREN identifier_list RPAREN { dprintf("(enumerated type ");
+               printvector($2); dputs(")"); };
 /* -> Subrange types */
 subrange_type: constant ELLIPSIS constant { dprintf("subrange <%s..%s>\n",
                $1->c_str(), $3->c_str()); };
@@ -162,13 +161,13 @@ new_pointer_type: UPARROW identifier;
 /* Variable declarations */
 variable_declaration_part: empty { dputs("(no var decls)"); }
                          | VAR variable_declaration_list SEMICOLON
-                         { puts("(parsed var decls)"); };
+                         { dputs("(parsed var decls)"); };
 variable_declaration_list: variable_declaration_list SEMICOLON list_of_types
                          | list_of_types;
 variable_access: identifier
-               | variable_access LBRACKET index_expression_list RBRACKET { puts("(indexed_variable)"); }
-               | variable_access DOT identifier { puts("(field_designator)"); }
-               | variable_access UPARROW { puts("(buffer_variable)"); };
+               | variable_access LBRACKET index_expression_list RBRACKET { dputs("(indexed_variable)"); }
+               | variable_access DOT identifier { dputs("(field_designator)"); }
+               | variable_access UPARROW { dputs("(buffer_variable)"); };
 index_expression_list: index_expression_list COMMA expression
                      | expression;
 
@@ -177,7 +176,7 @@ index_expression_list: index_expression_list COMMA expression
 procedure_and_function_declaration_part: empty { dputs("(no procs or funcs)"); }
                                        | procedure_or_function_declaration_list
                                        | procedure_or_function_declaration_list SEMICOLON
-                                       { puts("(parsed procs and functions)"); };
+                                       { dputs("(parsed procs and functions)"); };
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
                                        | procedure_or_funcion_declaration;
@@ -185,23 +184,23 @@ procedure_or_funcion_declaration: procedure_declaration | function_declaration;
 /* Procedure declarations */
 procedure_declaration: procedure_heading SEMICOLON FORWARD
                      | procedure_heading SEMICOLON block
-                     { puts("(parsed procedure declaration)"); };
+                     { dputs("(parsed procedure declaration)"); };
 procedure_heading: PROCEDURE identifier formal_parameter_list
                  { dprintf("procedure head <%s> with params\n", ($2)->c_str()); }
                  | PROCEDURE identifier
-                 { printf("procedure head <%s> w/o params\n", ($2)->c_str()); };
+                 { dprintf("procedure head <%s> w/o params\n", ($2)->c_str()); };
 /* Function declarations */
 function_declaration: function_heading SEMICOLON FORWARD
                     | function_identification SEMICOLON block
                     | function_heading SEMICOLON block
 function_heading: FUNCTION identifier formal_parameter_list COLON identifier
-                { printf("function head <%s>:<%s> with params\n",
+                { dprintf("function head <%s>:<%s> with params\n",
                 ($2)->c_str(), ($5)->c_str()); }
                 | FUNCTION identifier COLON identifier
-                { printf("function head <%s>:<%s> with no params\n",
+                { dprintf("function head <%s>:<%s> with no params\n",
                 ($2)->c_str(), ($4)->c_str()); };
 function_identification: FUNCTION identifier
-                       { printf("function ident <%s>\n", ($2)->c_str()); };
+                       { dprintf("function ident <%s>\n", ($2)->c_str()); };
 /* Parameters */
 formal_parameter_list: LPAREN formal_parameter_section_list RPAREN;
 formal_parameter_section_list: formal_parameter_section_list SEMICOLON
@@ -251,9 +250,9 @@ statement: label COLON simple_statement
          | simple_statement
          | structured_statement;
 simple_statement: empty
-                | variable_access COLEQUAL expression { puts("(assignment_statement)"); }
-                | identifier actual_parameter_list { printf("proc/func stmt <%s>\n", ($1)->c_str()); }
-                | identifier { printf("proc/func stmt w/o parameters or variable <%s>\n", ($1)->c_str()); }
+                | variable_access COLEQUAL expression { dputs("(assignment_statement)"); }
+                | identifier actual_parameter_list { dprintf("proc/func stmt <%s>\n", ($1)->c_str()); }
+                | identifier { dprintf("proc/func stmt w/o parameters or variable <%s>\n", ($1)->c_str()); }
                 | GOTO label;
 /* Structured statements */
 structured_statement: compound_statement
@@ -268,8 +267,8 @@ compound_statement: TOKBEGIN statement_sequence END
 /* -> Conditional statements */
 conditional_statement: if_statement | case_statement { dputs("(conditional_statement)"); };
 /* -> If statements */
-if_statement: if_then %prec simple_if { puts("parsed if"); }
-            | if_then ELSE statement { puts("parsed if-else"); };
+if_statement: if_then %prec simple_if { dputs("parsed if"); }
+            | if_then ELSE statement { dputs("parsed if-else"); };
 if_then: IF expression THEN statement;
 /* -> Case statements */
 case_statement: CASE case_index OF case_list_element_list SEMICOLON END

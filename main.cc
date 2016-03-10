@@ -11,15 +11,15 @@ extern "C" FILE *yyin;
 
 int main(int argc, char **argv)
 {
-  std::string filename = "input.pas";
+  std::string filename;
   if (argc == 2)
     filename = std::string(argv[1]);
-  else if (argc >= 3)
-    die("Usage: %s [input-file]\n", argv[0]);
+  else
+    die("Usage: %s <input file>\n", argv[0]);
 
   yyin = fopen(filename.c_str(), "r");
   if (!yyin)
-    die("can't open file \"%s\"", filename.c_str());
+    die("Can't open file \"%s\"", filename.c_str());
 
   yyparse();
 }
@@ -42,7 +42,7 @@ void die(const char *format, ...)
   exit(0);
 }
 
-const bool debug = false;
+const int debug = false;
 
 void dputs(std::string s)
 {

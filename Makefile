@@ -24,5 +24,5 @@ test: all
 	./p2c2 tri.pas
 
 vi:
-	vim lexer.l parser.y parser.output *.pas -p
+	vim lexer.l parser.y parser.output main.cc -p
 
