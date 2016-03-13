@@ -3,7 +3,7 @@
 #include <cstring>
 #include <vector>
 
-#include "main.hh"
+#include "utils.hh"
 
 extern "C" int yylex();
 #define YYDEBUG 1

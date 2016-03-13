@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 #include "parser.hh" /* all the tokens and yylval */
-#include "main.hh" /* yyerror */
+#include "utils.hh" /* yyerror */
 %}
 
 %x string
