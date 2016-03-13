@@ -98,7 +98,7 @@ string_element [^'\n]|"''"
 <label>{label}            { yylval.labelv = strdup(yytext);
                             const int labeln = atoi(yytext);
                             if (labeln < 0 || labeln > 9999)
-                              yyerror("labels must be in the interval 0 to 9999");
+                              yyerror("labels must be in the interval from 0 to 9999");
                             return LABELN; }
 <label>","                { return LABELCOMMA; }
 <label>";"                { BEGIN(INITIAL); return LABELSEMICOLON; }
@@ -122,7 +122,7 @@ string_element [^'\n]|"''"
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
 [ \t\r\n]*                ;
-.                         { printf("unknown character %c\n", *yytext); }
+.                         { printf("unknown character in string '%c'\n", *yytext); }
 
 %%
 /*

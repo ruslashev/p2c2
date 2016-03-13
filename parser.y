@@ -64,7 +64,7 @@ block: label_declaration_part
 /* ----------------------------------------------------------------------------
  * Program */
 program: optional_program_heading block DOT
-       { green(); dputs("<parsed program>"); reset(); };
+       { green(); puts("<parsed program>"); reset(); };
 program_heading: PROGRAM identifier LPAREN identifier_list RPAREN
                  { dprintf("program <%s>", $2->c_str()); printvector($4); dputs(""); }
                | PROGRAM identifier { dprintf("program <%s>\n", $2->c_str()); };
