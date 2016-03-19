@@ -1,12 +1,15 @@
 %{
+#include "ast.hh"
+#include "utils.hh"
 #include <string>
 #include <cstring>
 #include <vector>
 
-#include "utils.hh"
-
 extern "C" int yylex();
+
 #define YYDEBUG 1
+
+ast_node *root = nullptr;
 %}
 
 %glr-parser
@@ -21,6 +24,7 @@ extern "C" int yylex();
   /* (^) used in lex. (v) used in bison */
   std::string *string;
   std::vector<std::string*> *strvector;
+  struct ast_node *node;
 }
 
 %token <opv> PLUS MINUS ASTERISK SLASH EQUAL LT GT LBRACKET RBRACKET DOT COMMA
@@ -35,8 +39,8 @@ extern "C" int yylex();
 %token <labelv> LABELN;
 
 %type <string> identifier number string sign label constant;
-/* %type <string> */
 %type <strvector> identifier_list;
+%type <node> program_heading optional_program_heading;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -63,14 +67,30 @@ block: label_declaration_part
 
 /* ----------------------------------------------------------------------------
  * Program */
-program: optional_program_heading block DOT
-       { green(); puts("<parsed program>"); reset(); };
-program_heading: PROGRAM identifier LPAREN identifier_list RPAREN
-                 { dprintf("program <%s>", $2->c_str()); printvector($4); dputs(""); }
-               | PROGRAM identifier { dprintf("program <%s>\n", $2->c_str()); };
+program: empty { yyerror("empty program"); }
+       | optional_program_heading block DOT
+       {
+           root = make_node(N_PROGRAM);
+           if ($1)
+             root->add_child($1);
+           green(); puts("<parsed program>"); reset();
+       };
 optional_program_heading: program_heading SEMICOLON
-                        | empty;
-
+                        {
+                          $$ = $1;
+                        }
+                        | empty
+                        {
+                          $$ = nullptr;
+                        };
+program_heading: PROGRAM identifier optional_identifier_list_in_parens
+               {
+                 ast_node *node = make_node(N_PROGRAM_HEADING);
+                 node->data = *($2);
+                 $$ = node;
+               };
+optional_identifier_list_in_parens: LPAREN identifier_list RPAREN
+                                  | empty;
 
 /* ----------------------------------------------------------------------------
  * Label declarations */

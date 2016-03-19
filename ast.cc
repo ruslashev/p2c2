@@ -16,6 +16,7 @@ ast_node *make_node()
 {
   ast_node *node = new ast_node;
   node->type = N_NOTSET;
+  node->data = "";
   node->parent = nullptr;
   allocated_nodes.push_back(node);
   return node;
@@ -25,6 +26,7 @@ ast_node *make_node(node_type type)
 {
   ast_node *node = new ast_node;
   node->type = type;
+  node->data = "";
   node->parent = nullptr;
   allocated_nodes.push_back(node);
   return node;
@@ -34,16 +36,14 @@ static std::string type_to_str(node_type type) {
   switch (type) {
     case N_NOTSET:
       return "N_NOTSET";
-      break;
     case N_PROGRAM:
       return "N_PROGRAM";
-      break;
+    case N_PROGRAM_HEADING:
+      return "N_PROGRAM_HEADING";
     case N_IDENTIFIER:
       return "N_IDENTIFIER";
-      break;
     default:
       return "Unhandled type";
-      break;
   }
 }
 
@@ -56,10 +56,11 @@ static void indent(int depth)
 static void print_node(ast_node *node, int depth)
 {
   indent(depth);
-  printf("<%s> (%zu children)", type_to_str(node->type).c_str(),
-      node->children.size());
+  printf("<%s>", type_to_str(node->type).c_str());
+  if (node->data.size())
+    printf(" \"%s\"", node->data.c_str());
   if (node->children.size()) {
-    printf(" {\n");
+    printf(" (%zu children) {\n", node->children.size());
     for (ast_node *c : node->children)
       print_node(c, depth+1);
     indent(depth);

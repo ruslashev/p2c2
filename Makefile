@@ -18,5 +18,5 @@ clean:
 	rm -f $(OBJS)
 
 vi:
-	vim lexer.l parser.y parser.output main.cc ast.cc utils.cc -p
+	vim lexer.l parser.y main.cc ast.cc utils.cc -p
 

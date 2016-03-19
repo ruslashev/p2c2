@@ -1,7 +1,6 @@
 #include "utils.hh"
 #include "parser.hh"
 #include "ast.hh"
-
 #include <cstdio>
 #include <iostream>
 #include <fstream>
@@ -9,6 +8,7 @@
 
 extern "C" int yylex();
 extern "C" FILE *yyin;
+extern "C" ast_node *root;
 
 int main(int argc, char **argv)
 {
@@ -26,16 +26,9 @@ int main(int argc, char **argv)
 
   puts("");
 
-  ast_node *root = make_node(N_PROGRAM);
-
-  ast_node *id = make_node(N_IDENTIFIER);
-  ast_node *id2 = make_node(N_IDENTIFIER);
-
-  root->add_child(id);
-  root->add_child(id2);
-
-  print_ast(root);
-  delete_ast();
+  if (root) {
+    print_ast(root);
+  }
 }
 
 // vim: et:ts=2:sw=2
