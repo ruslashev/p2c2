@@ -43,7 +43,8 @@ ast_node *root = nullptr;
 %type <node> label_declaration_part constant_definition_part constant_definition;
 %type <node> constant_definition_list type_definition_part type_definition_list;
 %type <node> type_definition type_denoter enumeration subrange structured_type;
-%type <node> array_type index_type_list ordinal_type;
+%type <node> array_type index_type_list ordinal_type list_with_type variant;
+%type <node> record_section_list variant_part variant_selector variant_list;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -226,16 +227,42 @@ field_list: record_section_list SEMICOLON variant_part SEMICOLON
           | variant_part SEMICOLON
           | variant_part
           | empty;
-record_section_list: record_section_list SEMICOLON list_of_types
-                   | list_of_types;
-list_of_types: identifier_list COLON type_denoter;
-variant_part: CASE variant_selector OF variant_list;
-variant_list: variant_list SEMICOLON variant
-            | variant;
+record_section_list: record_section_list SEMICOLON list_with_type
+                   { $$->add_child($3); }
+                   | list_with_type
+                   {
+                     $$ = make_node(N_RECORD_SECTION_LIST);
+                     $$->add_child($1);
+                   };
+list_with_type: identifier_list COLON type_denoter
+              {
+                $$ = make_node(N_LIST_WITH_TYPE);
+                $$->list = $1;
+                $$->add_child($3);
+              };
+variant_part: CASE variant_selector OF variant_list
+            {
+              $$ = make_node(N_RECORD_VARIANT_PART);
+              $$->add_child($2);
+            };
 variant_selector: identifier COLON identifier
-                | identifier;
-variant: case_constant_list COLON LPAREN field_list RPAREN
-case_constant_list: case_constant_list COMMA constant
+                {
+                  $$ = make_node(N_RECORD_VARIANT_SELECTOR);
+                  $$->list = {*($1), *($3)};
+                }
+                | identifier
+                {
+                  $$ = make_node(N_RECORD_VARIANT_SELECTOR);
+                  $$->list = {*($1)};
+                };
+variant_list: variant_list SEMICOLON variant { $$->add_child($3); }
+            | variant
+            {
+              $$ = make_node(N_RECORD_VARIANT_LIST);
+              $$->add_child($1);
+            };
+variant: constant_list COLON LPAREN field_list RPAREN;
+constant_list: constant_list COMMA constant
                   | constant;
 /* -> Set-types */
 set_type: SET OF ordinal_type;
@@ -250,8 +277,8 @@ new_pointer_type: UPARROW identifier;
 variable_declaration_part: empty { dputs("(no var decls)"); }
                          | VAR variable_declaration_list SEMICOLON
                          { dputs("(parsed var decls)"); };
-variable_declaration_list: variable_declaration_list SEMICOLON list_of_types
-                         | list_of_types;
+variable_declaration_list: variable_declaration_list SEMICOLON list_with_type
+                         | list_with_type;
 variable_access: identifier
                | variable_access LBRACKET index_expression_list RBRACKET { dputs("(indexed_variable)"); }
                | variable_access DOT identifier { dputs("(field_designator)"); }
@@ -294,8 +321,8 @@ formal_parameter_list: LPAREN formal_parameter_section_list RPAREN;
 formal_parameter_section_list: formal_parameter_section_list SEMICOLON
                                formal_parameter_section
                              | formal_parameter_section;
-formal_parameter_section: list_of_types
-                        | VAR list_of_types
+formal_parameter_section: list_with_type
+                        | VAR list_with_type
                         | procedure_heading
                         | function_heading;
 /* Expression */
@@ -364,7 +391,7 @@ case_statement: CASE case_index OF case_list_element_list SEMICOLON END
               | CASE case_index OF case_list_element_list END { dputs("(case w/o ;)"); }
 case_list_element_list: case_list_element_list SEMICOLON case_list_element
                       | case_list_element { dputs("(case_list_element_list)"); };
-case_list_element: case_constant_list COLON statement;
+case_list_element: constant_list COLON statement;
 case_index: expression;
 /* -> Repetetive statements */
 repetetive_statement: repeat_statement | while_statement | for_statement;

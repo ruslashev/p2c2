@@ -61,6 +61,8 @@ static std::string type_to_str(node_type type) {
       return "N_SUBRANGE";
     case N_IDENTIFIER:
       return "N_IDENTIFIER";
+    case N_RECORD_SECTION_LIST:
+      return "N_RECORD_SECTION_LIST";
     default:
       return "Unhandled type";
   }
