@@ -41,7 +41,9 @@ ast_node *root = nullptr;
 %type <strvector> identifier_list label_list;
 %type <node> program_heading optional_program_heading block;
 %type <node> label_declaration_part constant_definition_part constant_definition;
-%type <node> constant_definition_list;
+%type <node> constant_definition_list type_definition_part type_definition_list;
+%type <node> type_definition type_denoter enumeration subrange structured_type;
+%type <node> array_type index_type_list ordinal_type;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -150,36 +152,71 @@ string: STRING { $$ = new std::string($1); };
 
 /* ----------------------------------------------------------------------------
  * Type definitions */
-type_definition_part: empty { dputs("(no type defs)"); }
-                    | TYPE type_definition_list { dputs("(parsed type defs)"); };
-type_definition_list: type_definition_list type_definition
-                    | type_definition;
+type_definition_part: empty
+                    {
+                      $$ = nullptr;
+                      dputs("(no type defs)");
+                    }
+                    | TYPE type_definition_list
+                    {
+                      $$ = $2;
+                      dputs("(parsed type defs)");
+                    };
+type_definition_list: type_definition_list type_definition { $$->add_child($2); }
+                    | type_definition
+                    {
+                      $$ = make_node(N_TYPE_DEFINITION_LIST);
+                      $$->add_child($1);
+                    };
 /* General */
 type_definition: identifier EQUAL type_denoter SEMICOLON
-                 { dprintf("type <%s>\n", ($1)->c_str()); };
-type_denoter: identifier { dprintf("type identifier <%s>\n", ($1)->c_str()); }
-            | new_ordinal_type
-            | new_structured_type
-            | new_pointer_type { dprintf("<new type>\n"); };
-/* Simple types */
-/* -> General */
-ordinal_type: new_ordinal_type | identifier;
-new_ordinal_type: enumerated_type | subrange_type;
-/* -> Enumerated types */
-enumerated_type: LPAREN identifier_list RPAREN { dprintf("(enumerated type ");
-               printvector($2); dputs(")"); };
-/* -> Subrange types */
-subrange_type: constant ELLIPSIS constant { dprintf("subrange <%s..%s>\n",
-               $1->c_str(), $3->c_str()); };
-/* Structured types */
-/* -> General */
-new_structured_type: PACKED unpacked_structured_type
-                   | unpacked_structured_type;
-unpacked_structured_type: array_type | record_type | set_type | file_type;
+                 {
+                   $$ = make_node(N_TYPE_DEFINITION);
+                   $$->add_child($3);
+                   dprintf("typedef <%s>\n", ($1)->c_str());
+                 };
+type_denoter: identifier { $$ = make_node(N_IDENTIFIER); }
+            | enumeration { $$ = $1; }
+            | subrange { $$ = $1; }
+            | PACKED structured_type { $$ = $2; }
+            | structured_type { $$ = $1; }
+            | new_pointer_type { ; };
+enumeration: LPAREN identifier_list RPAREN
+           {
+             $$ = make_node(N_ENUMERATION);
+             $$->list = $2;
+             dprintf("(enumerated type "); printvector($2); dputs(")");
+           };
+subrange: constant ELLIPSIS constant
+        {
+          $$ = make_node(N_SUBRANGE);
+          $$->list = {*($1), *($3)};
+          dprintf("subrange <%s..%s>\n", $1->c_str(), $3->c_str());
+        };
+structured_type: array_type { $$ = $1; }
+               | record_type { $$ = $1; }
+               | set_type { $$ = $1; }
+               | file_type { $$ = $1; };
 /* -> Array-types */
-array_type: ARRAY LBRACKET index_type_list RBRACKET OF type_denoter;
-index_type_list: index_type_list COMMA ordinal_type
-               | ordinal_type;
+array_type: ARRAY LBRACKET index_type_list RBRACKET OF type_denoter
+          {
+            $$ = make_node(N_ARRAY_TYPE);
+            $$->add_child($3);
+            $$->add_child($6);
+          };
+index_type_list: index_type_list COMMA ordinal_type { $$->add_child($3); }
+               | ordinal_type
+               {
+                 $$ = make_node(N_INDEX_TYPE_LIST);
+                 $$->add_child($1);
+               };
+ordinal_type: enumeration { $$ = $1; }
+            | subrange { $$ = $1; }
+            | identifier
+            {
+              $$ = make_node(N_IDENTIFIER);
+              $$->data = *($1);
+            };
 /* -> Record-types */
 record_type: RECORD field_list END;
 field_list: record_section_list SEMICOLON variant_part SEMICOLON

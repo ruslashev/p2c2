@@ -47,10 +47,20 @@ static std::string type_to_str(node_type type) {
       return "N_BLOCK";
     case N_LABEL_DECL:
       return "N_LABEL_DECL";
-    case N_CONSTANT_DEFINITION:
-      return "CONSTANT_DEFINITION";
     case N_CONSTANT_DEFINITION_LIST:
-      return "CONSTANT_DEFINITION_LIST";
+      return "N_CONSTANT_DEFINITION_LIST";
+    case N_CONSTANT_DEFINITION:
+      return "N_CONSTANT_DEFINITION";
+    case N_TYPE_DEFINITION_LIST:
+      return "N_TYPE_DEFINITION_LIST";
+    case N_TYPE_DEFINITION:
+      return "N_TYPE_DEFINITION";
+    case N_ENUMERATION:
+      return "N_ENUMERATION";
+    case N_SUBRANGE:
+      return "N_SUBRANGE";
+    case N_IDENTIFIER:
+      return "N_IDENTIFIER";
     default:
       return "Unhandled type";
   }
