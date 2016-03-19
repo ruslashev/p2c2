@@ -47,6 +47,10 @@ static std::string type_to_str(node_type type) {
       return "N_BLOCK";
     case N_LABEL_DECL:
       return "N_LABEL_DECL";
+    case N_CONSTANT_DEFINITION:
+      return "CONSTANT_DEFINITION";
+    case N_CONSTANT_DEFINITION_LIST:
+      return "CONSTANT_DEFINITION_LIST";
     default:
       return "Unhandled type";
   }

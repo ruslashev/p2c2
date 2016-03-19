@@ -39,8 +39,9 @@ ast_node *root = nullptr;
 
 %type <string> identifier number string sign label constant;
 %type <strvector> identifier_list label_list;
-%type <node> program_heading optional_program_heading label_declaration_part;
-%type <node> block;
+%type <node> program_heading optional_program_heading block;
+%type <node> label_declaration_part constant_definition_part constant_definition;
+%type <node> constant_definition_list;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -87,6 +88,7 @@ block: label_declaration_part
        {
          $$ = make_node(N_BLOCK);
          $$->add_child($1);
+         $$->add_child($2);
          dputs("parsed block");
        };
 
@@ -113,12 +115,27 @@ label: LABELN { $$ = new std::string($1); }
 
 /* ----------------------------------------------------------------------------
  * Constant definitions */
-constant_definition_part: empty { dputs("(no consts)"); }
-                        | CONST constant_definition_list SEMICOLON { dputs("(parsed consts)"); };
+constant_definition_part: empty
+                        {
+                          $$ = nullptr;
+                          dputs("(no consts)");
+                        }
+                        | CONST constant_definition_list SEMICOLON
+                        {
+                          $$ = $2;
+                          dputs("(parsed consts)");
+                        };
 constant_definition_list: constant_definition_list SEMICOLON constant_definition
-                        | constant_definition;
+                        { $$->add_child($3); }
+                        | constant_definition
+                        {
+                          $$ = make_node(N_CONSTANT_DEFINITION_LIST);
+                          $$->add_child($1);
+                        };
 constant_definition: identifier EQUAL constant
                    {
+                     $$ = make_node(N_CONSTANT_DEFINITION);
+                     $$->list = {*($1), *($3)};
                      dprintf("const %s = %s\n", $1->c_str(), $3->c_str());
                    };
 constant: sign number { $$ = new std::string(*($1)); $$->append(*($2)); }

@@ -8,7 +8,9 @@ enum node_type {
   N_PROGRAM,
   N_PROGRAM_HEADING,
   N_BLOCK,
-  N_LABEL_DECL
+  N_LABEL_DECL,
+  N_CONSTANT_DEFINITION,
+  N_CONSTANT_DEFINITION_LIST,
 };
 
 struct ast_node {
