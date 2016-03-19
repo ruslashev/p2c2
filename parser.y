@@ -23,7 +23,7 @@ ast_node *root = nullptr;
   char *labelv;
   /* (^) used in lex. (v) used in bison */
   std::string *string;
-  std::vector<std::string*> *strvector;
+  std::vector<std::string> *strvector;
   struct ast_node *node;
 }
 
@@ -31,16 +31,16 @@ ast_node *root = nullptr;
 %token <opv> COLON SEMICOLON UPARROW LPAREN RPAREN LTGT LTE GTE COLEQUAL ELLIPSIS
 %token AND ARRAY TOKBEGIN CASE CONST DIV DO DOWNTO ELSE END TOKFILE FOR FUNCTION
 %token GOTO IF IN MOD NIL NOT OF OR PACKED PROCEDURE PROGRAM RECORD REPEAT SET
-%token THEN TO TYPE UNTIL VAR WHILE WITH FORWARD
+%token THEN TO TYPE UNTIL VAR WHILE WITH FORWARD LABEL
 %token <identv> IDENTIFIER;
 %token <numberv> NUMBER;
 %token <strv> STRING;
-%token LABEL LABELCOMMA LABELSEMICOLON;
 %token <labelv> LABELN;
 
 %type <string> identifier number string sign label constant;
-%type <strvector> identifier_list;
-%type <node> program_heading optional_program_heading;
+%type <strvector> identifier_list label_list;
+%type <node> program_heading optional_program_heading label_declaration_part;
+%type <node> block;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -49,66 +49,78 @@ ast_node *root = nullptr;
 
 %%
 
-empty: ;
-
-identifier: IDENTIFIER { $$ = new std::string($1); };
-number: NUMBER { $$ = new std::string($1); };
-string: STRING { $$ = new std::string($1); };
-
-identifier_list: identifier_list COMMA identifier { $$->push_back($3); }
-               | identifier { $$ = new std::vector<std::string*>; $$->push_back($1); };
-
-block: label_declaration_part
-       constant_definition_part
-       type_definition_part
-       variable_declaration_part
-       procedure_and_function_declaration_part
-       statement_part { dputs("parsed block"); };
-
 /* ----------------------------------------------------------------------------
  * Program */
 program: empty { yyerror("empty program"); }
        | optional_program_heading block DOT
        {
            root = make_node(N_PROGRAM);
-           if ($1)
-             root->add_child($1);
+           root->add_child($1);
+           root->add_child($2);
            green(); puts("<parsed program>"); reset();
        };
-optional_program_heading: program_heading SEMICOLON
-                        {
-                          $$ = $1;
-                        }
-                        | empty
-                        {
-                          $$ = nullptr;
-                        };
+empty: ;
+optional_program_heading: program_heading SEMICOLON { $$ = $1; }
+                        | empty { $$ = nullptr; };
 program_heading: PROGRAM identifier optional_identifier_list_in_parens
                {
-                 ast_node *node = make_node(N_PROGRAM_HEADING);
-                 node->data = *($2);
-                 $$ = node;
+                 $$ = make_node(N_PROGRAM_HEADING);
+                 $$->data = *($2);
+                 dprintf("program <%s>\n", $2->c_str());
                };
-optional_identifier_list_in_parens: LPAREN identifier_list RPAREN
-                                  | empty;
+optional_identifier_list_in_parens: empty
+                                  | LPAREN identifier_list RPAREN;
+identifier_list: identifier_list COMMA identifier { $$->push_back(*($3)); }
+               | identifier
+               {
+                 $$ = new std::vector<std::string>;
+                 $$->push_back(*($1));
+                 /* delete $1*/
+               };
+identifier: IDENTIFIER { $$ = new std::string($1); };
+block: label_declaration_part
+       constant_definition_part
+       type_definition_part
+       variable_declaration_part
+       procedure_and_function_declaration_part
+       statement_part
+       {
+         $$ = make_node(N_BLOCK);
+         $$->add_child($1);
+         dputs("parsed block");
+       };
 
 /* ----------------------------------------------------------------------------
  * Label declarations */
-label_declaration_part: empty { dputs("(no labels)"); }
-                      | LABEL label_list LABELSEMICOLON { dputs("(parsed labels)"); };
-label_list: label_list LABELCOMMA label
-          | label;
-label: LABELN { dprintf("label %s\n", $1); }
+label_declaration_part: empty
+                      {
+                        $$ = nullptr;
+                        dputs("(no labels)");
+                      }
+                      | LABEL label_list SEMICOLON
+                      {
+                        $$ = make_node(N_LABEL_DECL);
+                        $$->list = *($2);
+                        dputs("(parsed labels)");
+                      };
+label_list: label_list COMMA label { $$->push_back(*($3)); }
+          | label
+          {
+            $$ = new std::vector<std::string>;
+            $$->push_back(*($1));
+          };
+label: LABELN { $$ = new std::string($1); }
 
 /* ----------------------------------------------------------------------------
  * Constant definitions */
 constant_definition_part: empty { dputs("(no consts)"); }
-                        | CONST constant_definition_list SEMICOLON
-                        { dputs("(parsed consts)"); };
+                        | CONST constant_definition_list SEMICOLON { dputs("(parsed consts)"); };
 constant_definition_list: constant_definition_list SEMICOLON constant_definition
                         | constant_definition;
 constant_definition: identifier EQUAL constant
-                   { dprintf("const %s = %s\n", $1->c_str(), $3->c_str()); };
+                   {
+                     dprintf("const %s = %s\n", $1->c_str(), $3->c_str());
+                   };
 constant: sign number { $$ = new std::string(*($1)); $$->append(*($2)); }
         | sign identifier { $$ = new std::string(*($1)); $$->append(*($2)); }
         | number { $$ = new std::string(*($1)); }
@@ -116,6 +128,8 @@ constant: sign number { $$ = new std::string(*($1)); $$->append(*($2)); }
         | string { $$ = new std::string(*($1)); };
 sign: PLUS { $$ = new std::string($1, strlen($1)); }
     | MINUS { $$ = new std::string($1, strlen($1)); };
+number: NUMBER { $$ = new std::string($1); };
+string: STRING { $$ = new std::string($1); };
 
 /* ----------------------------------------------------------------------------
  * Type definitions */

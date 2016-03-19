@@ -10,6 +10,8 @@ extern "C" int yylex();
 extern "C" FILE *yyin;
 extern "C" ast_node *root;
 
+bool debug = true;
+
 int main(int argc, char **argv)
 {
   std::string filename;

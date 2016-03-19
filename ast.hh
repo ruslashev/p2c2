@@ -7,12 +7,14 @@ enum node_type {
   N_NOTSET,
   N_PROGRAM,
   N_PROGRAM_HEADING,
-  N_IDENTIFIER
+  N_BLOCK,
+  N_LABEL_DECL
 };
 
 struct ast_node {
   node_type type;
   std::string data;
+  std::vector<std::string> list;
   ast_node *parent;
   std::vector<ast_node*> children;
   void add_child(ast_node *child);

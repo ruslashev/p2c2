@@ -100,8 +100,8 @@ string_element [^'\n]|"''"
                             if (labeln < 0 || labeln > 9999)
                               yyerror("labels must be in the interval from 0 to 9999");
                             return LABELN; }
-<label>","                { return LABELCOMMA; }
-<label>";"                { BEGIN(INITIAL); return LABELSEMICOLON; }
+<label>","                { return COMMA; }
+<label>";"                { BEGIN(INITIAL); return SEMICOLON; }
 <label>" "                ;
 
 "'"                       { BEGIN(string); }
@@ -122,7 +122,7 @@ string_element [^'\n]|"''"
 {number}                  { yylval.numberv = strdup(yytext); return NUMBER; }
 
 [ \t\r\n]*                ;
-.                         { printf("unknown character in string '%c'\n", *yytext); }
+.                         { printf("unknown character '%c' in string on line %d\n", *yytext, yylineno); }
 
 %%
 /*

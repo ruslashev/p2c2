@@ -1,4 +1,5 @@
 #include "ast.hh"
+#include "utils.hh"
 #include <cstdio>
 #include <memory>
 #include <string>
@@ -8,6 +9,8 @@ static std::vector<ast_node*> allocated_nodes;
 
 void ast_node::add_child(ast_node *child)
 {
+  if (!child)
+    return;
   child->parent = this;
   children.push_back(child);
 }
@@ -40,8 +43,10 @@ static std::string type_to_str(node_type type) {
       return "N_PROGRAM";
     case N_PROGRAM_HEADING:
       return "N_PROGRAM_HEADING";
-    case N_IDENTIFIER:
-      return "N_IDENTIFIER";
+    case N_BLOCK:
+      return "N_BLOCK";
+    case N_LABEL_DECL:
+      return "N_LABEL_DECL";
     default:
       return "Unhandled type";
   }
@@ -59,6 +64,10 @@ static void print_node(ast_node *node, int depth)
   printf("<%s>", type_to_str(node->type).c_str());
   if (node->data.size())
     printf(" \"%s\"", node->data.c_str());
+  if (node->list.size()) {
+    printf(" ");
+    printvector(&node->list);
+  }
   if (node->children.size()) {
     printf(" (%zu children) {\n", node->children.size());
     for (ast_node *c : node->children)
