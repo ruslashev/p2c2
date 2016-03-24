@@ -4,7 +4,7 @@
 %option yylineno
 
 %{
-#define YY_DECL extern "C" int yylex()
+#define YY_DECL extern int yylex()
 #include <string>
 #include <vector>
 #include "parser.hh" /* all the tokens and yylval */

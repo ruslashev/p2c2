@@ -5,7 +5,7 @@
 #include <cstring>
 #include <vector>
 
-extern "C" int yylex();
+extern int yylex();
 
 #define YYDEBUG 1
 

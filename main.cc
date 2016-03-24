@@ -6,9 +6,9 @@
 #include <fstream>
 #include <cstdarg>
 
-extern "C" int yylex();
-extern "C" FILE *yyin;
-extern "C" ast_node *root;
+extern int yylex();
+extern FILE *yyin;
+extern ast_node *root;
 
 bool debug = false;
 
