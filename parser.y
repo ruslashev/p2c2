@@ -46,6 +46,7 @@ ast_node *root = nullptr;
 %type <node> array index_type_list ordinal_type list_with_type variant;
 %type <node> record_section_list variant_part variant_selector variant_list;
 %type <node> field_list record set file_type new_pointer_type;
+%type <node> variable_declaration_part variable_declaration_list;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -94,6 +95,7 @@ block: label_declaration_part
          $$->add_child($1);
          $$->add_child($2);
          $$->add_child($3);
+         $$->add_child($4);
          dputs("parsed block");
        };
 
@@ -259,8 +261,7 @@ field_list: record_section_list SEMICOLON variant_part SEMICOLON
             $$->add_child($1);
           }
           | empty { $$ = make_node(N_RECORD); };
-record_section_list: record_section_list SEMICOLON list_with_type
-                   { $$->add_child($3); }
+record_section_list: record_section_list SEMICOLON list_with_type { $$->add_child($3); }
                    | list_with_type
                    {
                      $$ = make_node(N_RECORD_SECTION_LIST);
@@ -328,11 +329,14 @@ new_pointer_type: UPARROW identifier
 /* ----------------------------------------------------------------------------
  * Declarations and denotations of variables */
 /* Variable declarations */
-variable_declaration_part: empty { dputs("(no var decls)"); }
-                         | VAR variable_declaration_list SEMICOLON
-                         { dputs("(parsed var decls)"); };
-variable_declaration_list: variable_declaration_list SEMICOLON list_with_type
-                         | list_with_type;
+variable_declaration_part: empty { $$ = nullptr; }
+                         | VAR variable_declaration_list SEMICOLON { $$ = $2; };
+variable_declaration_list: variable_declaration_list SEMICOLON list_with_type { $$->add_child($3); }
+                         | list_with_type
+                         {
+                           $$ = make_node(N_VARIABLE_DECL);
+                           $$->add_child($1);
+                         };
 variable_access: identifier
                | variable_access LBRACKET index_expression_list RBRACKET { dputs("(indexed_variable)"); }
                | variable_access DOT identifier { dputs("(field_designator)"); }

@@ -28,6 +28,7 @@ enum node_type {
   N_SET,
   N_FILE_TYPE,
   N_POINTER_TYPE,
+  N_VARIABLE_DECL,
 };
 
 struct ast_node {

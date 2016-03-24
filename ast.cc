@@ -70,6 +70,7 @@ static std::string type_to_str(node_type type) {
     { N_SET, "N_SET" },
     { N_FILE_TYPE, "N_FILE_TYPE" },
     { N_POINTER_TYPE, "N_POINTER_TYPE" },
+    { N_VARIABLE_DECL, "N_VARIABLE_DECL" },
   };
   if (strings.count(type))
     return strings.at(type);
