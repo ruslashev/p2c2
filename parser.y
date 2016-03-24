@@ -38,13 +38,14 @@ ast_node *root = nullptr;
 %token <labelv> LABELN;
 
 %type <string> identifier number string sign label constant;
-%type <strvector> identifier_list label_list;
+%type <strvector> identifier_list label_list constant_list;
 %type <node> program_heading optional_program_heading block;
 %type <node> label_declaration_part constant_definition_part constant_definition;
 %type <node> constant_definition_list type_definition_part type_definition_list;
 %type <node> type_definition type_denoter enumeration subrange structured_type;
-%type <node> array_type index_type_list ordinal_type list_with_type variant;
+%type <node> array index_type_list ordinal_type list_with_type variant;
 %type <node> record_section_list variant_part variant_selector variant_list;
+%type <node> field_list record set file_type new_pointer_type;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -92,6 +93,7 @@ block: label_declaration_part
          $$ = make_node(N_BLOCK);
          $$->add_child($1);
          $$->add_child($2);
+         $$->add_child($3);
          dputs("parsed block");
        };
 
@@ -173,20 +175,24 @@ type_definition_list: type_definition_list type_definition { $$->add_child($2); 
 type_definition: identifier EQUAL type_denoter SEMICOLON
                  {
                    $$ = make_node(N_TYPE_DEFINITION);
+                   $$->data = *($1);
                    $$->add_child($3);
                    dprintf("typedef <%s>\n", ($1)->c_str());
                  };
-type_denoter: identifier { $$ = make_node(N_IDENTIFIER); }
+type_denoter: identifier
+            {
+              $$ = make_node(N_IDENTIFIER);
+              $$->data = *($1);
+            }
             | enumeration { $$ = $1; }
             | subrange { $$ = $1; }
             | PACKED structured_type { $$ = $2; }
             | structured_type { $$ = $1; }
-            | new_pointer_type { ; };
+            | new_pointer_type { $$ = $1; };
 enumeration: LPAREN identifier_list RPAREN
            {
              $$ = make_node(N_ENUMERATION);
-             $$->list = $2;
-             dprintf("(enumerated type "); printvector($2); dputs(")");
+             $$->list = *($2);
            };
 subrange: constant ELLIPSIS constant
         {
@@ -194,21 +200,21 @@ subrange: constant ELLIPSIS constant
           $$->list = {*($1), *($3)};
           dprintf("subrange <%s..%s>\n", $1->c_str(), $3->c_str());
         };
-structured_type: array_type { $$ = $1; }
-               | record_type { $$ = $1; }
-               | set_type { $$ = $1; }
+structured_type: array { $$ = $1; }
+               | record { $$ = $1; }
+               | set { $$ = $1; }
                | file_type { $$ = $1; };
 /* -> Array-types */
-array_type: ARRAY LBRACKET index_type_list RBRACKET OF type_denoter
+array: ARRAY LBRACKET index_type_list RBRACKET OF type_denoter
           {
-            $$ = make_node(N_ARRAY_TYPE);
+            $$ = make_node(N_ARRAY);
             $$->add_child($3);
             $$->add_child($6);
           };
 index_type_list: index_type_list COMMA ordinal_type { $$->add_child($3); }
                | ordinal_type
                {
-                 $$ = make_node(N_INDEX_TYPE_LIST);
+                 $$ = make_node(N_ARRAY_INDEX_TYPE_LIST);
                  $$->add_child($1);
                };
 ordinal_type: enumeration { $$ = $1; }
@@ -219,14 +225,40 @@ ordinal_type: enumeration { $$ = $1; }
               $$->data = *($1);
             };
 /* -> Record-types */
-record_type: RECORD field_list END;
+record: RECORD field_list END { $$ = $2; };
 field_list: record_section_list SEMICOLON variant_part SEMICOLON
+          {
+            $$ = make_node(N_RECORD);
+            $$->add_child($1);
+            $$->add_child($3);
+          }
           | record_section_list SEMICOLON variant_part
+          {
+            $$ = make_node(N_RECORD);
+            $$->add_child($1);
+            $$->add_child($3);
+          }
           | record_section_list SEMICOLON
+          {
+            $$ = make_node(N_RECORD);
+            $$->add_child($1);
+          }
           | record_section_list
+          {
+            $$ = make_node(N_RECORD);
+            $$->add_child($1);
+          }
           | variant_part SEMICOLON
+          {
+            $$ = make_node(N_RECORD);
+            $$->add_child($1);
+          }
           | variant_part
-          | empty;
+          {
+            $$ = make_node(N_RECORD);
+            $$->add_child($1);
+          }
+          | empty { $$ = make_node(N_RECORD); };
 record_section_list: record_section_list SEMICOLON list_with_type
                    { $$->add_child($3); }
                    | list_with_type
@@ -237,13 +269,14 @@ record_section_list: record_section_list SEMICOLON list_with_type
 list_with_type: identifier_list COLON type_denoter
               {
                 $$ = make_node(N_LIST_WITH_TYPE);
-                $$->list = $1;
+                $$->list = *($1);
                 $$->add_child($3);
               };
 variant_part: CASE variant_selector OF variant_list
             {
               $$ = make_node(N_RECORD_VARIANT_PART);
               $$->add_child($2);
+              $$->add_child($4);
             };
 variant_selector: identifier COLON identifier
                 {
@@ -261,15 +294,36 @@ variant_list: variant_list SEMICOLON variant { $$->add_child($3); }
               $$ = make_node(N_RECORD_VARIANT_LIST);
               $$->add_child($1);
             };
-variant: constant_list COLON LPAREN field_list RPAREN;
-constant_list: constant_list COMMA constant
-                  | constant;
+variant: constant_list COLON LPAREN field_list RPAREN
+       {
+         $$ = make_node(N_RECORD_VARIANT);
+         $$->list = *($1);
+         $$->add_child($4);
+       };
+constant_list: constant_list COMMA constant { $$->push_back(*($3)); }
+             | constant
+             {
+               $$ = new std::vector<std::string>;
+               $$->push_back(*($1));
+             };
 /* -> Set-types */
-set_type: SET OF ordinal_type;
+set: SET OF ordinal_type
+   {
+     $$ = make_node(N_SET);
+     $$->add_child($3);
+   };
 /* -> File-types */
-file_type: TOKFILE OF type_denoter;
+file_type: TOKFILE OF type_denoter
+         {
+           $$ = make_node(N_FILE_TYPE);
+           $$->add_child($3);
+         };
 /* Pointer-types */
-new_pointer_type: UPARROW identifier;
+new_pointer_type: UPARROW identifier
+                {
+                  $$ = make_node(N_POINTER_TYPE);
+                  $$->data = *($2);
+                };
 
 /* ----------------------------------------------------------------------------
  * Declarations and denotations of variables */

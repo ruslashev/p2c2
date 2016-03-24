@@ -40,14 +40,6 @@ void dprintf(const char *format, ...)
   va_end(args);
 }
 
-void printvector(std::vector<std::string> *v)
-{
-  dprintf("[");
-  for (size_t i = 0; i < v->size()-1; i++)
-    dprintf("%s, ", (v->at(i)).c_str());
-  dprintf("%s]", (v->at(v->size()-1)).c_str());
-}
-
 void green()
 {
   fputs("\x1b[32m", stdout);

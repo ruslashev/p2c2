@@ -10,7 +10,7 @@ extern "C" int yylex();
 extern "C" FILE *yyin;
 extern "C" ast_node *root;
 
-bool debug = true;
+bool debug = false;
 
 int main(int argc, char **argv)
 {

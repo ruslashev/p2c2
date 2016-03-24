@@ -12,8 +12,8 @@ record
 	name, firstname : string;
 	age : 0..99;
 	case married : Boolean of
-	true : (Spousesname : string);
-	false : ( )
+		true : (Spousesname : string);
+		false : ( )
 end;
 
 what =
@@ -24,7 +24,7 @@ record
 		triangle: (side: real ; inclination, angle1, angle2: angle);
 		rectangle: (side1, side2: real ; skew: angle);
 		circle: (diameter: real);
-end
+end;
 
 begin
 end.

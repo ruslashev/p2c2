@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 
 static std::vector<ast_node*> allocated_nodes;
 
@@ -35,37 +36,45 @@ ast_node *make_node(node_type type)
   return node;
 }
 
+static void print_vector(std::vector<std::string> *v)
+{
+  printf("[");
+  for (size_t i = 0; i < v->size()-1; i++)
+    printf("%s, ", (v->at(i)).c_str());
+  printf("%s]", (v->at(v->size()-1)).c_str());
+}
+
 static std::string type_to_str(node_type type) {
-  switch (type) {
-    case N_NOTSET:
-      return "N_NOTSET";
-    case N_PROGRAM:
-      return "N_PROGRAM";
-    case N_PROGRAM_HEADING:
-      return "N_PROGRAM_HEADING";
-    case N_BLOCK:
-      return "N_BLOCK";
-    case N_LABEL_DECL:
-      return "N_LABEL_DECL";
-    case N_CONSTANT_DEFINITION_LIST:
-      return "N_CONSTANT_DEFINITION_LIST";
-    case N_CONSTANT_DEFINITION:
-      return "N_CONSTANT_DEFINITION";
-    case N_TYPE_DEFINITION_LIST:
-      return "N_TYPE_DEFINITION_LIST";
-    case N_TYPE_DEFINITION:
-      return "N_TYPE_DEFINITION";
-    case N_ENUMERATION:
-      return "N_ENUMERATION";
-    case N_SUBRANGE:
-      return "N_SUBRANGE";
-    case N_IDENTIFIER:
-      return "N_IDENTIFIER";
-    case N_RECORD_SECTION_LIST:
-      return "N_RECORD_SECTION_LIST";
-    default:
-      return "Unhandled type";
-  }
+  const std::map<node_type,std::string> strings = {
+    { N_NOTSET, "N_NOTSET" },
+    { N_PROGRAM, "N_PROGRAM" },
+    { N_PROGRAM_HEADING, "N_PROGRAM_HEADING" },
+    { N_BLOCK, "N_BLOCK" },
+    { N_LABEL_DECL, "N_LABEL_DECL" },
+    { N_CONSTANT_DEFINITION_LIST, "N_CONSTANT_DEFINITION_LIST" },
+    { N_CONSTANT_DEFINITION, "N_CONSTANT_DEFINITION" },
+    { N_TYPE_DEFINITION_LIST, "N_TYPE_DEFINITION_LIST" },
+    { N_TYPE_DEFINITION, "N_TYPE_DEFINITION" },
+    { N_ENUMERATION, "N_ENUMERATION" },
+    { N_SUBRANGE, "N_SUBRANGE" },
+    { N_IDENTIFIER, "N_IDENTIFIER" },
+    { N_ARRAY_INDEX_TYPE_LIST, "N_ARRAY_INDEX_TYPE_LIST" },
+    { N_ARRAY, "N_ARRAY" },
+    { N_LIST_WITH_TYPE, "N_LIST_WITH_TYPE" },
+    { N_RECORD_SECTION_LIST, "N_RECORD_SECTION_LIST" },
+    { N_RECORD_VARIANT_PART, "N_RECORD_VARIANT_PART" },
+    { N_RECORD_VARIANT_SELECTOR, "N_RECORD_VARIANT_SELECTOR" },
+    { N_RECORD_VARIANT_LIST, "N_RECORD_VARIANT_LIST" },
+    { N_RECORD_VARIANT, "N_RECORD_VARIANT" },
+    { N_RECORD, "N_RECORD" },
+    { N_SET, "N_SET" },
+    { N_FILE_TYPE, "N_FILE_TYPE" },
+    { N_POINTER_TYPE, "N_POINTER_TYPE" },
+  };
+  if (strings.count(type))
+    return strings.at(type);
+  else
+    return "Unknown node type";
 }
 
 static void indent(int depth)
@@ -82,7 +91,7 @@ static void print_node(ast_node *node, int depth)
     printf(" \"%s\"", node->data.c_str());
   if (node->list.size()) {
     printf(" ");
-    printvector(&node->list);
+    print_vector(&node->list);
   }
   if (node->children.size()) {
     printf(" (%zu children) {\n", node->children.size());
