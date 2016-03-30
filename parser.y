@@ -47,6 +47,11 @@ ast_node *root = nullptr;
 %type <node> record_section_list variant_part variant_selector variant_list;
 %type <node> field_list record set file_type new_pointer_type;
 %type <node> variable_declaration_part variable_declaration_list;
+%type <node> procedure_and_function_declaration_part procedure_declaration;
+%type <node> procedure_or_function_declaration_list function_declaration;
+%type <node> procedure_or_funcion_declaration procedure_heading;
+%type <node> function_heading formal_parameter_list function_identification;
+%type <node> formal_parameter_section formal_parameter_section_list;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -96,6 +101,7 @@ block: label_declaration_part
          $$->add_child($2);
          $$->add_child($3);
          $$->add_child($4);
+         $$->add_child($5);
          dputs("parsed block");
        };
 
@@ -331,58 +337,101 @@ new_pointer_type: UPARROW identifier
 /* Variable declarations */
 variable_declaration_part: empty { $$ = nullptr; }
                          | VAR variable_declaration_list SEMICOLON { $$ = $2; };
-variable_declaration_list: variable_declaration_list SEMICOLON list_with_type { $$->add_child($3); }
+variable_declaration_list: variable_declaration_list SEMICOLON list_with_type
+                         { $$->add_child($3); }
                          | list_with_type
                          {
                            $$ = make_node(N_VARIABLE_DECL);
                            $$->add_child($1);
                          };
-variable_access: identifier
-               | variable_access LBRACKET index_expression_list RBRACKET { dputs("(indexed_variable)"); }
-               | variable_access DOT identifier { dputs("(field_designator)"); }
-               | variable_access UPARROW { dputs("(buffer_variable)"); };
-index_expression_list: index_expression_list COMMA expression
-                     | expression;
 
 /* ----------------------------------------------------------------------------
  * Procedure and function declarations */
-procedure_and_function_declaration_part: empty { dputs("(no procs or funcs)"); }
+procedure_and_function_declaration_part: empty { $$ = nullptr; }
                                        | procedure_or_function_declaration_list
+                                       { $$ = $1; }
                                        | procedure_or_function_declaration_list SEMICOLON
-                                       { dputs("(parsed procs and functions)"); };
+                                       { $$ = $1; };
 procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                         SEMICOLON procedure_or_funcion_declaration
-                                       | procedure_or_funcion_declaration;
-procedure_or_funcion_declaration: procedure_declaration | function_declaration;
+                                       { $$->add_child($3); }
+                                       | procedure_or_funcion_declaration
+                                       {
+                                         $$ = make_node(N_PROC_OR_FUNC_DECL_LIST);
+                                         $$->add_child($1);
+                                       };
+procedure_or_funcion_declaration: procedure_declaration { $$ = $1; }
+                                | function_declaration { $$ = $1; };
 /* Procedure declarations */
 procedure_declaration: procedure_heading SEMICOLON FORWARD
+                     {
+                       $$ = make_node(N_PROCEDURE_DECL);
+                       $$->add_child($1);
+                     }
                      | procedure_heading SEMICOLON block
-                     { dputs("(parsed procedure declaration)"); };
+                     {
+                       $$ = make_node(N_PROCEDURE_DECL);
+                       $$->add_child($1);
+                       $$->add_child($3);
+                     };
 procedure_heading: PROCEDURE identifier formal_parameter_list
-                 { dprintf("procedure head <%s> with params\n", ($2)->c_str()); }
+                 {
+                   $$ = make_node(N_PROCEDURE_HEADING);
+                   $$->data = *($2);
+                   $$->add_child($3);
+                 }
                  | PROCEDURE identifier
-                 { dprintf("procedure head <%s> w/o params\n", ($2)->c_str()); };
+                 {
+                   $$ = make_node(N_PROCEDURE_HEADING);
+                   $$->data = *($2);
+                 };
 /* Function declarations */
 function_declaration: function_heading SEMICOLON FORWARD
+                    {
+                      $$ = make_node(N_FUNCTION_DECL);
+                      $$->add_child($1);
+                    }
                     | function_identification SEMICOLON block
+                    {
+                      $$ = make_node(N_FUNCTION_DECL);
+                      $$->add_child($1);
+                      $$->add_child($3);
+                    }
                     | function_heading SEMICOLON block
+                    {
+                      $$ = make_node(N_FUNCTION_DECL);
+                      $$->add_child($1);
+                      $$->add_child($3);
+                    };
 function_heading: FUNCTION identifier formal_parameter_list COLON identifier
-                { dprintf("function head <%s>:<%s> with params\n",
-                ($2)->c_str(), ($5)->c_str()); }
+                {
+                  $$ = make_node(N_FUNCTION_HEADING);
+                  $$->list = {*($2), *($5)};
+                  $$->add_child($3);
+                }
                 | FUNCTION identifier COLON identifier
-                { dprintf("function head <%s>:<%s> with no params\n",
-                ($2)->c_str(), ($4)->c_str()); };
+                {
+                  $$ = make_node(N_FUNCTION_HEADING);
+                  $$->list = {*($2), *($4)};
+                };
 function_identification: FUNCTION identifier
-                       { dprintf("function ident <%s>\n", ($2)->c_str()); };
+                       {
+                         $$ = make_node(N_FUNCTION_IDENT_HEADING);
+                         $$->data = *($2);
+                       };
 /* Parameters */
-formal_parameter_list: LPAREN formal_parameter_section_list RPAREN;
+formal_parameter_list: LPAREN formal_parameter_section_list RPAREN { $$ = $2; };
 formal_parameter_section_list: formal_parameter_section_list SEMICOLON
-                               formal_parameter_section
-                             | formal_parameter_section;
-formal_parameter_section: list_with_type
-                        | VAR list_with_type
-                        | procedure_heading
-                        | function_heading;
+                               formal_parameter_section { $$->add_child($3); }
+                             | formal_parameter_section
+                             {
+                               $$ = make_node(N_FORMAL_PARAMETER_LIST);
+                               $$->add_child($1);
+                             };
+formal_parameter_section: list_with_type { $$ = $1; }
+                        | VAR list_with_type { $$ = $2; $$->data = "var"; }
+                        | procedure_heading { $$ = $1; }
+                        | function_heading { $$ = $1; };
 /* Expression */
 expression: simple_expression relational_operator simple_expression
           | simple_expression;
@@ -393,9 +442,18 @@ term_list: term_list adding_operator term
 term: factor_list;
 factor_list: factor_list multiplying_operator factor
            | factor;
-/* factor: identifier; */ /* Level 1 compliance */
-factor: variable_access | unsigned_constant | function_designator |
-      set_constructor | LPAREN expression RPAREN | NOT factor;
+factor: variable_access
+      | unsigned_constant
+      | function_designator
+      | set_constructor
+      | LPAREN expression RPAREN
+      | NOT factor;
+variable_access: identifier
+               | variable_access LBRACKET index_expression_list RBRACKET { dputs("(indexed_variable)"); }
+               | variable_access DOT identifier { dputs("(field_designator)"); }
+               | variable_access UPARROW { dputs("(buffer_variable)"); };
+index_expression_list: index_expression_list COMMA expression
+                     | expression;
 unsigned_constant: number | string | NIL;
 set_constructor: LBRACKET member_designator_list RBRACKET;
 member_designator_list: member_designator_list COMMA member_designator

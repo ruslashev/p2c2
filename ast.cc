@@ -71,6 +71,13 @@ static std::string type_to_str(node_type type) {
     { N_FILE_TYPE, "N_FILE_TYPE" },
     { N_POINTER_TYPE, "N_POINTER_TYPE" },
     { N_VARIABLE_DECL, "N_VARIABLE_DECL" },
+    { N_PROC_OR_FUNC_DECL_LIST, "N_PROC_OR_FUNC_DECL_LIST" },
+    { N_PROCEDURE_DECL, "N_PROCEDURE_DECL" },
+    { N_PROCEDURE_HEADING, "N_PROCEDURE_HEADING" },
+    { N_FUNCTION_DECL, "N_FUNCTION_DECL" },
+    { N_FUNCTION_HEADING, "N_FUNCTION_HEADING" },
+    { N_FUNCTION_IDENT_HEADING, "N_FUNCTION_IDENT_HEADING" },
+    { N_FORMAL_PARAMETER_LIST, "N_FORMAL_PARAMETER_LIST" },
   };
   if (strings.count(type))
     return strings.at(type);
