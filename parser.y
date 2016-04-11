@@ -37,7 +37,7 @@ ast_node *root = nullptr;
 %token <strv> STRING;
 %token <labelv> LABELN;
 
-%type <string> identifier number string sign label constant;
+%type <string> identifier number string sign label constant relational_operator;
 %type <strvector> identifier_list label_list constant_list;
 %type <node> program_heading optional_program_heading block;
 %type <node> label_declaration_part constant_definition_part constant_definition;
@@ -52,6 +52,7 @@ ast_node *root = nullptr;
 %type <node> procedure_or_funcion_declaration procedure_heading;
 %type <node> function_heading formal_parameter_list function_identification;
 %type <node> formal_parameter_section formal_parameter_section_list;
+%type <node> expression simple_expression term_list;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -434,14 +435,31 @@ formal_parameter_section: list_with_type { $$ = $1; }
                         | function_heading { $$ = $1; };
 /* Expression */
 expression: simple_expression relational_operator simple_expression
-          | simple_expression;
-simple_expression: sign term_list
-                 | term_list;
-term_list: term_list adding_operator term
-         | term;
-term: factor_list;
-factor_list: factor_list multiplying_operator factor
-           | factor;
+          {
+            $$ = make_node(N_EXPRESSION);
+            $$->add_child($1);
+            $$->add_child($2);
+            $$->add_child($3);
+          }
+          | simple_expression
+          {
+            $$ = make_node(N_EXPRESSION);
+            $$->add_child($1);
+          };
+simple_expression: sign term_list { $2->data = *($1); $$ = $2; }
+                 | term_list { $$ = $1 };
+term_list: term_list adding_operator factor_list { $$->add_child($2); $$->add_child($3); }
+         | factor_list
+         {
+           $$ = make_node(N_TERM_LIST);
+           $$->add_child($1);
+         };
+factor_list: factor_list multiplying_operator factor { $$->add_child($2); $$->add_child($3); }
+           | factor
+           {
+             $$ = make_node(N_FACTOR_LIST);
+             $$->add_child($1);
+           };
 factor: variable_access
       | unsigned_constant
       | function_designator
@@ -462,7 +480,13 @@ member_designator: expression ELLIPSIS expression
                  | expression;
 multiplying_operator: ASTERISK | SLASH | DIV | MOD | AND;
 adding_operator: PLUS | MINUS | OR;
-relational_operator: EQUAL | LTGT | LT | GT | LTE | GTE | IN;
+relational_operator: EQUAL { $$ = new std::string($1); }
+                   | LTGT { $$ = new std::string($1); }
+                   | LT { $$ = new std::string($1); }
+                   | GT { $$ = new std::string($1); }
+                   | LTE { $$ = new std::string($1); }
+                   | GTE { $$ = new std::string($1); }
+                   | IN { $$ = new std::string($1); };
 /* Function designators */
 function_designator: identifier actual_parameter_list; /* divergence from standard */
 actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN;
