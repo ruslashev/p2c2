@@ -16,12 +16,7 @@ ast_node *root = nullptr;
 /* %expect 2 */
 
 %union {
-  char *identv;
-  char *numberv;
-  char *opv;
-  char *strv;
-  char *labelv;
-  /* (^) used in lex. (v) used in bison */
+  char *identv, *numberv, *opv, *strv, *labelv;
   std::string *string;
   std::vector<std::string> *strvector;
   struct ast_node *node;
@@ -37,7 +32,7 @@ ast_node *root = nullptr;
 %token <strv> STRING;
 %token <labelv> LABELN;
 
-%type <string> identifier number string sign label constant relational_operator;
+%type <string> identifier number string sign label constant;
 %type <strvector> identifier_list label_list constant_list;
 %type <node> program_heading optional_program_heading block;
 %type <node> label_declaration_part constant_definition_part constant_definition;
@@ -52,7 +47,11 @@ ast_node *root = nullptr;
 %type <node> procedure_or_funcion_declaration procedure_heading;
 %type <node> function_heading formal_parameter_list function_identification;
 %type <node> formal_parameter_section formal_parameter_section_list;
-%type <node> expression simple_expression term_list;
+%type <node> expression simple_expression term_list multiplying_operator;
+%type <node> adding_operator factor_list factor unsigned_constant;
+%type <node> function_designator set_constructor variable_access;
+%type <node> index_expression_list member_designator_list member_designator;
+%type <node> relational_operator;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -447,7 +446,7 @@ expression: simple_expression relational_operator simple_expression
             $$->add_child($1);
           };
 simple_expression: sign term_list { $2->data = *($1); $$ = $2; }
-                 | term_list { $$ = $1 };
+                 | term_list { $$ = $1; };
 term_list: term_list adding_operator factor_list { $$->add_child($2); $$->add_child($3); }
          | factor_list
          {
@@ -461,32 +460,116 @@ factor_list: factor_list multiplying_operator factor { $$->add_child($2); $$->ad
              $$->add_child($1);
            };
 factor: variable_access
+      {
+        $$ = make_node(N_FACTOR);
+        $$->add_child($1);
+      }
       | unsigned_constant
+      {
+        $$ = make_node(N_FACTOR);
+        $$->add_child($1);
+      }
       | function_designator
+      {
+        $$ = make_node(N_FACTOR);
+        $$->add_child($1);
+      }
       | set_constructor
+      {
+        $$ = make_node(N_FACTOR);
+        $$->add_child($1);
+      }
       | LPAREN expression RPAREN
-      | NOT factor;
+      {
+        $$ = make_node(N_FACTOR);
+        ast_node *expr_in_parens = make_node(N_PARENS_EXPRESSION);
+        expr_in_parens->add_child($2);
+        $$->add_child(expr_in_parens);
+      }
+      | NOT factor
+      {
+        $$ = make_node(N_FACTOR);
+        ast_node *not_factor = make_node(N_NOT_FACTOR);
+        not_factor->add_child($2);
+        $$->add_child(not_factor);
+      };
 variable_access: identifier
-               | variable_access LBRACKET index_expression_list RBRACKET { dputs("(indexed_variable)"); }
-               | variable_access DOT identifier { dputs("(field_designator)"); }
-               | variable_access UPARROW { dputs("(buffer_variable)"); };
-index_expression_list: index_expression_list COMMA expression
-                     | expression;
-unsigned_constant: number | string | NIL;
-set_constructor: LBRACKET member_designator_list RBRACKET;
+               {
+                 $$ = make_node(N_VARIABLE_ACCESS_SIMPLE);
+                 $$->data = *($1);
+               }
+               | variable_access LBRACKET index_expression_list RBRACKET
+               {
+                 $$ = make_node(N_VARIABLE_ACCESS_ARRAY_ACCESS);
+                 $$->add_child($1);
+                 $$->add_child($3);
+               }
+               | variable_access DOT identifier
+               {
+                 $$ = make_node(N_VARIABLE_ACCESS_FIELD_DESIGNATOR);
+                 $$->data = *($3);
+                 $$->add_child($1);
+               }
+               | variable_access UPARROW
+               {
+                 $$ = make_node(N_VARIABLE_ACCESS_BUFFER_VARIABLE);
+                 $$->add_child($1);
+               };
+index_expression_list: index_expression_list COMMA expression { $$->add_child($3); }
+                     | expression
+                     {
+                       $$ = make_node(N_INDEX_EXPRESSION_LIST);
+                       $$->add_child($1);
+                     };
+unsigned_constant: number
+                 {
+                   $$ = make_node(N_UNSIGNED_CONSTANT);
+                   $$->data = *($1);
+                 }
+                 | string
+                 {
+                   $$ = make_node(N_UNSIGNED_CONSTANT);
+                   $$->data = *($1);
+                 }
+                 | NIL { $$ = make_node(N_UNSIGNED_CONSTANT); };
+set_constructor: LBRACKET member_designator_list RBRACKET
+               {
+                 $$ = make_node(N_SET_CONSTRUCTOR);
+                 $$->add_child($2);
+               }
 member_designator_list: member_designator_list COMMA member_designator
-                      | member_designator;
+                      { $$->add_child($3); }
+                      | member_designator
+                      {
+                        $$ = make_node(N_SET_MEMBER_DESIGNATOR_LIST);
+                        $$->add_child($1);
+                      };
 member_designator: expression ELLIPSIS expression
-                 | expression;
-multiplying_operator: ASTERISK | SLASH | DIV | MOD | AND;
-adding_operator: PLUS | MINUS | OR;
-relational_operator: EQUAL { $$ = new std::string($1); }
-                   | LTGT { $$ = new std::string($1); }
-                   | LT { $$ = new std::string($1); }
-                   | GT { $$ = new std::string($1); }
-                   | LTE { $$ = new std::string($1); }
-                   | GTE { $$ = new std::string($1); }
-                   | IN { $$ = new std::string($1); };
+                 {
+                   $$ = make_node(N_SET_MEMBER_DESIGNATOR);
+                   $$->add_child($1);
+                   $$->add_child($3);
+                 }
+                 | expression
+                 {
+                   $$ = make_node(N_SET_MEMBER_DESIGNATOR);
+                   $$->add_child($1);
+                 };
+multiplying_operator: ASTERISK { $$ = make_node(N_ASTERISK); }
+                    | SLASH    { $$ = make_node(N_SLASH); }
+                    | DIV      { $$ = make_node(N_DIV); }
+                    | MOD      { $$ = make_node(N_MOD); }
+                    | AND      { $$ = make_node(N_AND); };
+adding_operator: PLUS  { $$ = make_node(N_PLUS); }
+               | MINUS { $$ = make_node(N_MINUS); }
+               | OR    { $$ = make_node(N_OR); };
+relational_operator: EQUAL { $$ = make_node(N_EQUAL); }
+                   | LTGT  { $$ = make_node(N_LTGT); }
+                   | LT    { $$ = make_node(N_LT); }
+                   | GT    { $$ = make_node(N_GT); }
+                   | LTE   { $$ = make_node(N_LTE); }
+                   | GTE   { $$ = make_node(N_GTE); }
+                   | IN    { $$ = make_node(N_IN); };
 /* Function designators */
 function_designator: identifier actual_parameter_list; /* divergence from standard */
 actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN;

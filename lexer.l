@@ -37,27 +37,27 @@ string_element [^'\n]|"''"
 
 %%
 
-"+"                       { yylval.opv = strdup(yytext); return PLUS; }
-"-"                       { yylval.opv = strdup(yytext); return MINUS; }
-"*"                       { yylval.opv = strdup(yytext); return ASTERISK; }
-"/"                       { yylval.opv = strdup(yytext); return SLASH; }
-"="                       { yylval.opv = strdup(yytext); return EQUAL; }
-"<"                       { yylval.opv = strdup(yytext); return LT; }
-">"                       { yylval.opv = strdup(yytext); return GT; }
-"["|"(."                  { yylval.opv = strdup(yytext); return LBRACKET; }
-"]"|".)"                  { yylval.opv = strdup(yytext); return RBRACKET; }
-"."                       { yylval.opv = strdup(yytext); return DOT; }
-","                       { yylval.opv = strdup(yytext); return COMMA; }
-":"                       { yylval.opv = strdup(yytext); return COLON; }
-";"                       { yylval.opv = strdup(yytext); return SEMICOLON; }
-"^"|"@"                   { yylval.opv = strdup(yytext); return UPARROW; }
-"("                       { yylval.opv = strdup(yytext); return LPAREN; }
-")"                       { yylval.opv = strdup(yytext); return RPAREN; }
-"<>"                      { yylval.opv = strdup(yytext); return LTGT; }
-"<="                      { yylval.opv = strdup(yytext); return LTE; }
-">="                      { yylval.opv = strdup(yytext); return GTE; }
-":="                      { yylval.opv = strdup(yytext); return COLEQUAL; }
-".."                      { yylval.opv = strdup(yytext); return ELLIPSIS; }
+"+"                       { return PLUS; }
+"-"                       { return MINUS; }
+"*"                       { return ASTERISK; }
+"/"                       { return SLASH; }
+"="                       { return EQUAL; }
+"<"                       { return LT; }
+">"                       { return GT; }
+"["|"(."                  { return LBRACKET; }
+"]"|".)"                  { return RBRACKET; }
+"."                       { return DOT; }
+","                       { return COMMA; }
+":"                       { return COLON; }
+";"                       { return SEMICOLON; }
+"^"|"@"                   { return UPARROW; }
+"("                       { return LPAREN; }
+")"                       { return RPAREN; }
+"<>"                      { return LTGT; }
+"<="                      { return LTE; }
+">="                      { return GTE; }
+":="                      { return COLEQUAL; }
+".."                      { return ELLIPSIS; }
 "and"                     { return AND; }
 "array"                   { return ARRAY; }
 "begin"                   { return TOKBEGIN; }
@@ -96,8 +96,7 @@ string_element [^'\n]|"''"
 
 "label"                   { BEGIN(label); return LABEL; }
 <label>{label}            { yylval.labelv = strdup(yytext);
-                            const int labeln = atoi(yytext);
-                            if (labeln < 0 || labeln > 9999)
+                            if ((unsigned)atoi(yytext) > 9999)
                               yyerror("labels must be in the interval from 0 to 9999");
                             return LABELN; }
 <label>","                { return COMMA; }
