@@ -107,7 +107,26 @@ static std::string type_to_str(node_type type) {
     { N_GT, "N_GT" },
     { N_LTE, "N_LTE" },
     { N_GTE, "N_GTE" },
-    { N_IN, "N_IN" }
+    { N_IN, "N_IN" },
+    { N_FUNCTION_DESIGNATOR, "N_FUNCTION_DESIGNATOR" },
+    { N_ACTUAL_PARAMETER_LIST, "N_ACTUAL_PARAMETER_LIST" },
+    { N_ACTUAL_PARAMETER, "N_ACTUAL_PARAMETER" },
+    { N_EMPTY_STATEMENT, "N_EMPTY_STATEMENT" },
+    { N_ASSIGNMENT_STATEMENT, "N_ASSIGNMENT_STATEMENT" },
+    { N_PROC_OR_FUNC_STATEMENT, "N_PROC_OR_FUNC_STATEMENT" },
+    { N_PROC_FUNC_OR_VARIABLE, "N_PROC_FUNC_OR_VARIABLE" },
+    { N_GOTO, "N_GOTO" },
+    { N_STATEMENT_LIST, "N_STATEMENT_LIST" },
+    { N_IF, "N_IF" },
+    { N_CASE, "N_CASE" },
+    { N_CASE_ELEMENT_LIST, "N_CASE_ELEMENT_LIST" },
+    { N_CASE_ELEMENT, "N_CASE_ELEMENT" },
+    { N_REPEAT, "N_REPEAT" },
+    { N_WHILE, "N_WHILE" },
+    { N_FOR_TO, "N_FOR_TO" },
+    { N_FOR_DOWNTO, "N_FOR_DOWNTO" },
+    { N_WITH, "N_WITH" },
+    { N_RECORD_VARIABLE_LIST, "N_RECORD_VARIABLE_LIST" }
   };
   if (strings.count(type))
     return strings.at(type);
@@ -132,7 +151,10 @@ static void print_node(ast_node *node, int depth)
     print_vector(&node->list);
   }
   if (node->children.size()) {
-    printf(" (%zu children) {\n", node->children.size());
+    if (node->children.size() == 1)
+      printf(" (1 child) {\n");
+    else
+      printf(" (%zu children) {\n", node->children.size());
     for (ast_node *c : node->children)
       print_node(c, depth+1);
     indent(depth);

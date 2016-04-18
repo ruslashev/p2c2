@@ -51,7 +51,11 @@ ast_node *root = nullptr;
 %type <node> adding_operator factor_list factor unsigned_constant;
 %type <node> function_designator set_constructor variable_access;
 %type <node> index_expression_list member_designator_list member_designator;
-%type <node> relational_operator;
+%type <node> relational_operator actual_parameter_list actual_parameter_list_aux;
+%type <node> actual_parameter statement simple_statement structured_statement;
+%type <node> compound_statement statement_list if_statement if_then;
+%type <node> case_element_list case_element case_statement repeat_statement;
+%type <node> while_statement for_statement with_statement statement_part record_variable_list;
 
 %nonassoc simple_if
 %nonassoc ELSE
@@ -102,7 +106,7 @@ block: label_declaration_part
          $$->add_child($3);
          $$->add_child($4);
          $$->add_child($5);
-         dputs("parsed block");
+         $$->add_child($6);
        };
 
 /* ----------------------------------------------------------------------------
@@ -571,66 +575,170 @@ relational_operator: EQUAL { $$ = make_node(N_EQUAL); }
                    | GTE   { $$ = make_node(N_GTE); }
                    | IN    { $$ = make_node(N_IN); };
 /* Function designators */
-function_designator: identifier actual_parameter_list; /* divergence from standard */
-actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN;
+function_designator: identifier actual_parameter_list /* divergence from standard */
+                   {
+                     $$ = make_node(N_FUNCTION_DESIGNATOR);
+                     $$->data = *($1);
+                     $$->add_child($2);
+                   };
+actual_parameter_list: LPAREN actual_parameter_list_aux RPAREN { $$ = $2; };
 actual_parameter_list_aux: actual_parameter_list_aux COMMA actual_parameter
-                     | actual_parameter;
-actual_parameter: two_expressions COLON expression
-                | two_expressions
-                | expression;
-two_expressions: expression COLON expression;
+                         { $$->add_child($3); }
+                         | actual_parameter
+                         {
+                           $$ = make_node(N_ACTUAL_PARAMETER_LIST);
+                           $$->add_child($1);
+                         };
+actual_parameter: expression COLON expression COLON expression
+                {
+                  $$ = make_node(N_ACTUAL_PARAMETER);
+                  $$->add_child($1);
+                  $$->add_child($3);
+                  $$->add_child($5);
+                }
+                | expression COLON expression
+                {
+                  $$ = make_node(N_ACTUAL_PARAMETER);
+                  $$->add_child($1);
+                  $$->add_child($3);
+                }
+                | expression
+                {
+                  $$ = make_node(N_ACTUAL_PARAMETER);
+                  $$->add_child($1);
+                };
 
 /* ----------------------------------------------------------------------------
  * Statements */
 /* Simple statements */
 statement: label COLON simple_statement
+         {
+           $$ = $3;
+           $$->data = *($1);
+         }
          | label COLON structured_statement
-         | simple_statement
-         | structured_statement;
-simple_statement: empty
-                | variable_access COLEQUAL expression { dputs("(assignment_statement)"); }
-                | identifier actual_parameter_list { dprintf("proc/func stmt <%s>\n", ($1)->c_str()); }
-                | identifier { dprintf("proc/func stmt w/o parameters or variable <%s>\n", ($1)->c_str()); }
-                | GOTO label;
+         {
+           $$ = $3;
+           $$->data = *($1);
+         }
+         | simple_statement { $$ = $1; }
+         | structured_statement { $$ = $1; };
+simple_statement: empty { $$ = make_node(N_EMPTY_STATEMENT); }
+                | variable_access COLEQUAL expression
+                {
+                  $$ = make_node(N_ASSIGNMENT_STATEMENT);
+                  $$->add_child($1);
+                  $$->add_child($3);
+                }
+                | identifier actual_parameter_list
+                {
+                  $$ = $2;
+                  $$->type = N_PROC_OR_FUNC_STATEMENT;
+                  $$->data = *($1);
+                }
+                | identifier
+                {
+                  $$ = make_node(N_PROC_FUNC_OR_VARIABLE);
+                  $$->data = *($1);
+                }
+                | GOTO label
+                {
+                  $$ = make_node(N_GOTO);
+                  $$->data = *($2);
+                };
 /* Structured statements */
-structured_statement: compound_statement
-                    | conditional_statement
-                    | repetetive_statement
-                    | with_statement;
-statement_sequence: statement_list;
-statement_list: statement_list SEMICOLON statement
-              | statement;
-compound_statement: TOKBEGIN statement_sequence END
-                  { dputs("(compund statement end)"); };
-/* -> Conditional statements */
-conditional_statement: if_statement | case_statement { dputs("(conditional_statement)"); };
-/* -> If statements */
-if_statement: if_then %prec simple_if { dputs("parsed if"); }
-            | if_then ELSE statement { dputs("parsed if-else"); };
-if_then: IF expression THEN statement;
-/* -> Case statements */
-case_statement: CASE case_index OF case_list_element_list SEMICOLON END
-              { dputs("(case with ;)"); }
-              | CASE case_index OF case_list_element_list END { dputs("(case w/o ;)"); }
-case_list_element_list: case_list_element_list SEMICOLON case_list_element
-                      | case_list_element { dputs("(case_list_element_list)"); };
-case_list_element: constant_list COLON statement;
-case_index: expression;
-/* -> Repetetive statements */
-repetetive_statement: repeat_statement | while_statement | for_statement;
-repeat_statement: REPEAT statement_sequence UNTIL expression;
-while_statement: WHILE expression DO statement;
-for_statement: FOR control_variable COLEQUAL initial_value TO final_value DO statement
-             | FOR control_variable COLEQUAL initial_value DOWNTO final_value DO statement;
-control_variable: identifier;
-initial_value: expression;
-final_value: expression;
-/* -> With statements */
-with_statement: WITH record_variable_list DO statement;
-record_variable_list: record_variable_list COMMA variable_access /* record-variable */
-                    | variable_access; /* record-variable */
-
-statement_part: compound_statement;
+structured_statement: compound_statement { $$ = $1; }
+                    | if_statement { $$ = $1; }
+                    | case_statement { $$ = $1; }
+                    | repeat_statement { $$ = $1; }
+                    | while_statement { $$ = $1; }
+                    | for_statement { $$ = $1; }
+                    | with_statement { $$ = $1; };
+compound_statement: TOKBEGIN statement_list END { $$ = $2; }
+statement_list: statement_list SEMICOLON statement { $$->add_child($3); }
+              | statement
+              {
+                $$ = make_node(N_STATEMENT_LIST);
+                $$->add_child($1);
+              };
+if_statement: if_then %prec simple_if { $$ = $1; }
+            | if_then ELSE statement
+            {
+              $$ = $1;
+              $$->add_child($3);
+            };
+if_then: IF expression THEN statement
+       {
+         $$ = make_node(N_IF);
+         $$->add_child($2);
+         $$->add_child($4);
+       };
+case_statement: CASE expression OF case_element_list SEMICOLON END
+              {
+                $$ = make_node(N_CASE);
+                $$->add_child($2);
+                $$->add_child($4);
+              }
+              | CASE expression OF case_element_list END
+              {
+                $$ = make_node(N_CASE);
+                $$->add_child($2);
+                $$->add_child($4);
+              };
+case_element_list: case_element_list SEMICOLON case_element { $$->add_child($3); }
+                 | case_element
+                 {
+                   $$ = make_node(N_CASE_ELEMENT_LIST);
+                   $$->add_child($1);
+                 };
+case_element: constant_list COLON statement
+            {
+              $$ = make_node(N_CASE_ELEMENT);
+              $$->list = *($1);
+              $$->add_child($3);
+            };
+repeat_statement: REPEAT statement_list UNTIL expression
+                {
+                  $$ = make_node(N_REPEAT);
+                  $$->add_child($2);
+                  $$->add_child($4);
+                };
+while_statement: WHILE expression DO statement
+               {
+                  $$ = make_node(N_WHILE);
+                  $$->add_child($2);
+                  $$->add_child($4);
+               };
+for_statement: FOR identifier COLEQUAL expression TO expression DO statement
+             {
+               $$ = make_node(N_FOR_TO);
+               $$->data = *($2);
+               $$->add_child($4);
+               $$->add_child($6);
+               $$->add_child($8);
+             }
+             | FOR identifier COLEQUAL expression DOWNTO expression DO statement
+             {
+               $$ = make_node(N_FOR_DOWNTO);
+               $$->data = *($2);
+               $$->add_child($4);
+               $$->add_child($6);
+               $$->add_child($8);
+             };
+with_statement: WITH record_variable_list DO statement
+              {
+                $$ = make_node(N_WITH);
+                $$->add_child($2);
+                $$->add_child($4);
+              };
+record_variable_list: record_variable_list COMMA variable_access
+                    { $$->add_child($3); }
+                    | variable_access
+                    {
+                      $$ = make_node(N_RECORD_VARIABLE_LIST);
+                      $$->add_child($1);
+                    };
+statement_part: compound_statement { $$ = $1; };
 
 %%
 
