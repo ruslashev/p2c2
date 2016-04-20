@@ -81,7 +81,6 @@ program_heading: PROGRAM identifier optional_identifier_list_in_parens
                {
                  $$ = make_node(N_PROGRAM_HEADING);
                  $$->data = *($2);
-                 dprintf("program <%s>\n", $2->c_str());
                };
 optional_identifier_list_in_parens: empty
                                   | LPAREN identifier_list RPAREN;
@@ -111,16 +110,11 @@ block: label_declaration_part
 
 /* ----------------------------------------------------------------------------
  * Label declarations */
-label_declaration_part: empty
-                      {
-                        $$ = nullptr;
-                        dputs("(no labels)");
-                      }
+label_declaration_part: empty { $$ = nullptr; }
                       | LABEL label_list SEMICOLON
                       {
                         $$ = make_node(N_LABEL_DECL);
                         $$->list = *($2);
-                        dputs("(parsed labels)");
                       };
 label_list: label_list COMMA label { $$->push_back(*($3)); }
           | label
@@ -132,16 +126,8 @@ label: LABELN { $$ = new std::string($1); }
 
 /* ----------------------------------------------------------------------------
  * Constant definitions */
-constant_definition_part: empty
-                        {
-                          $$ = nullptr;
-                          dputs("(no consts)");
-                        }
-                        | CONST constant_definition_list SEMICOLON
-                        {
-                          $$ = $2;
-                          dputs("(parsed consts)");
-                        };
+constant_definition_part: empty { $$ = nullptr; }
+                        | CONST constant_definition_list SEMICOLON { $$ = $2; };
 constant_definition_list: constant_definition_list SEMICOLON constant_definition
                         { $$->add_child($3); }
                         | constant_definition
@@ -153,7 +139,6 @@ constant_definition: identifier EQUAL constant
                    {
                      $$ = make_node(N_CONSTANT_DEFINITION);
                      $$->list = {*($1), *($3)};
-                     dprintf("const %s = %s\n", $1->c_str(), $3->c_str());
                    };
 constant: sign number { $$ = new std::string(*($1)); $$->append(*($2)); }
         | sign identifier { $$ = new std::string(*($1)); $$->append(*($2)); }
@@ -167,16 +152,8 @@ string: STRING { $$ = new std::string($1); };
 
 /* ----------------------------------------------------------------------------
  * Type definitions */
-type_definition_part: empty
-                    {
-                      $$ = nullptr;
-                      dputs("(no type defs)");
-                    }
-                    | TYPE type_definition_list
-                    {
-                      $$ = $2;
-                      dputs("(parsed type defs)");
-                    };
+type_definition_part: empty { $$ = nullptr; }
+                    | TYPE type_definition_list { $$ = $2; };
 type_definition_list: type_definition_list type_definition { $$->add_child($2); }
                     | type_definition
                     {
@@ -189,7 +166,6 @@ type_definition: identifier EQUAL type_denoter SEMICOLON
                    $$ = make_node(N_TYPE_DEFINITION);
                    $$->data = *($1);
                    $$->add_child($3);
-                   dprintf("typedef <%s>\n", ($1)->c_str());
                  };
 type_denoter: identifier
             {
@@ -210,7 +186,6 @@ subrange: constant ELLIPSIS constant
         {
           $$ = make_node(N_SUBRANGE);
           $$->list = {*($1), *($3)};
-          dprintf("subrange <%s..%s>\n", $1->c_str(), $3->c_str());
         };
 structured_type: array { $$ = $1; }
                | record { $$ = $1; }
@@ -610,7 +585,14 @@ actual_parameter: expression COLON expression COLON expression
 
 /* ----------------------------------------------------------------------------
  * Statements */
-/* Simple statements */
+statement_part: compound_statement { $$ = $1; };
+compound_statement: TOKBEGIN statement_list END { $$ = $2; };
+statement_list: statement_list SEMICOLON statement { $$->add_child($3); }
+              | statement
+              {
+                $$ = make_node(N_STATEMENT_LIST);
+                $$->add_child($1);
+              };
 statement: label COLON simple_statement
          {
            $$ = $3;
@@ -654,13 +636,6 @@ structured_statement: compound_statement { $$ = $1; }
                     | while_statement { $$ = $1; }
                     | for_statement { $$ = $1; }
                     | with_statement { $$ = $1; };
-compound_statement: TOKBEGIN statement_list END { $$ = $2; }
-statement_list: statement_list SEMICOLON statement { $$->add_child($3); }
-              | statement
-              {
-                $$ = make_node(N_STATEMENT_LIST);
-                $$->add_child($1);
-              };
 if_statement: if_then %prec simple_if { $$ = $1; }
             | if_then ELSE statement
             {
@@ -738,7 +713,6 @@ record_variable_list: record_variable_list COMMA variable_access
                       $$ = make_node(N_RECORD_VARIABLE_LIST);
                       $$->add_child($1);
                     };
-statement_part: compound_statement { $$ = $1; };
 
 %%
 
