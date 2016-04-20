@@ -11,15 +11,17 @@ print_for_file () {
 
 reset
 
-make
+make &> scrap
 
 if [[ $? -eq 0 ]]; then
 	if [[ $# -eq 0 ]]; then
 		for f in $(ls test/**/*.pas); do
-			print_for_file "$f"
+			print_for_file "$f" &>> scrap
 		done
 	else
-		print_for_file "$1"
+		print_for_file "$1" &>> scrap
 	fi
 fi
+
+vim -u NONE scrap
 

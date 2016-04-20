@@ -5,4 +5,5 @@ parser.cc
 parser.hh
 parser.output
 test/turbo-pascal-archive/*
+scrap
 

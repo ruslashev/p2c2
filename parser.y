@@ -48,7 +48,7 @@ ast_node *root = nullptr;
 %type <node> function_heading formal_parameter_list function_identification;
 %type <node> formal_parameter_section formal_parameter_section_list;
 %type <node> expression simple_expression term_list multiplying_operator;
-%type <node> adding_operator factor_list factor unsigned_constant;
+%type <node> adding_operator factor_list factor;
 %type <node> function_designator set_constructor variable_access;
 %type <node> index_expression_list member_designator_list member_designator;
 %type <node> relational_operator actual_parameter_list actual_parameter_list_aux;
@@ -443,11 +443,17 @@ factor: variable_access
         $$ = make_node(N_FACTOR);
         $$->add_child($1);
       }
-      | unsigned_constant
+      | number
       {
-        $$ = make_node(N_FACTOR);
-        $$->add_child($1);
+        $$ = make_node(N_UNSIGNED_CONSTANT_NUMBER);
+        $$->data = *($1);
       }
+      | string
+      {
+        $$ = make_node(N_UNSIGNED_CONSTANT_STRING);
+        $$->data = *($1);
+      }
+      | NIL { $$ = make_node(N_UNSIGNED_CONSTANT_NIL); }
       | function_designator
       {
         $$ = make_node(N_FACTOR);
@@ -500,17 +506,6 @@ index_expression_list: index_expression_list COMMA expression { $$->add_child($3
                        $$ = make_node(N_INDEX_EXPRESSION_LIST);
                        $$->add_child($1);
                      };
-unsigned_constant: number
-                 {
-                   $$ = make_node(N_UNSIGNED_CONSTANT);
-                   $$->data = *($1);
-                 }
-                 | string
-                 {
-                   $$ = make_node(N_UNSIGNED_CONSTANT);
-                   $$->data = *($1);
-                 }
-                 | NIL { $$ = make_node(N_UNSIGNED_CONSTANT); };
 set_constructor: LBRACKET member_designator_list RBRACKET
                {
                  $$ = make_node(N_SET_CONSTRUCTOR);

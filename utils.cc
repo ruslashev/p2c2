@@ -42,12 +42,16 @@ void dprintf(const char *format, ...)
 
 void green()
 {
-  fputs("\x1b[32m", stdout);
+  extern int color;
+  if (color)
+    fputs("\x1b[32m", stdout);
 }
 
 void reset()
 {
-  fputs("\x1b[0m", stdout);
+  extern int color;
+  if (color)
+    fputs("\x1b[0m", stdout);
 }
 
 // vim: et:ts=2:sw=2
