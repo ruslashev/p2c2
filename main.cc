@@ -1,19 +1,20 @@
 #include "utils.hh"
 #include "parser.hh"
 #include "ast.hh"
+#include "codegen.hh"
 #include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <cstdarg>
 
-extern int yylex();
-extern FILE *yyin;
-extern ast_node *root;
-
 bool debug = false, color = false;
+std::string line_ending = "\n";
 
 int main(int argc, char **argv)
 {
+  extern FILE *yyin;
+  extern ast_node *root;
+
   std::string filename;
   if (argc == 2)
     filename = std::string(argv[1]);
@@ -27,10 +28,14 @@ int main(int argc, char **argv)
   yyparse();
 
   puts("");
+  print_ast(root);
 
-  if (root) {
-    print_ast(root);
-  }
+  std::string code = "";
+  generate_code(root, &code);
+  printf("\nGenerated code: {{{\n%s\n}}}\n", code.c_str());
+
+  delete_ast();
+  fclose(yyin);
 }
 
 // vim: et:ts=2:sw=2

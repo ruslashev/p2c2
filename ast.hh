@@ -101,6 +101,7 @@ struct ast_node {
 ast_node *make_node();
 ast_node *make_node(node_type type);
 
+std::string type_to_str(node_type type);
 void print_ast(ast_node *root);
 void delete_ast();
 

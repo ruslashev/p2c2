@@ -44,7 +44,8 @@ static void print_vector(std::vector<std::string> *v)
   printf("%s]", (v->at(v->size()-1)).c_str());
 }
 
-static std::string type_to_str(node_type type) {
+std::string type_to_str(node_type type)
+{
   const std::map<node_type,std::string> strings = {
     { N_NOTSET, "N_NOTSET" },
     { N_PROGRAM, "N_PROGRAM" },

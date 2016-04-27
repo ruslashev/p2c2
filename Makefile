@@ -1,6 +1,6 @@
-OBJS = .lexer.o .parser.o .main.o .ast.o .utils.o
+OBJS = .lexer.o .parser.o .main.o .ast.o .utils.o .codegen.o
 CXX = g++
-CXXFLAGS = -Wall -Wextra -g -std=c++0x
+CXXFLAGS = -Wall -Wextra -Wpedantic -g -std=c++0x
 EXECNAME = p2c2
 
 all:
@@ -11,6 +11,7 @@ all:
 	$(CXX) -c -o .main.o main.cc $(CXXFLAGS)
 	$(CXX) -c -o .ast.o ast.cc $(CXXFLAGS)
 	$(CXX) -c -o .utils.o utils.cc $(CXXFLAGS)
+	$(CXX) -c -o .codegen.o codegen.cc $(CXXFLAGS)
 	$(CXX) -o p2c2 $(OBJS)
 
 clean:
@@ -18,5 +19,5 @@ clean:
 	rm -f $(OBJS)
 
 vi:
-	vim lexer.l parser.y main.cc ast.cc utils.cc -p
+	vim lexer.l parser.y codegen.cc main.cc ast.cc utils.cc -p
 
