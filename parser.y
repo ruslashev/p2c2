@@ -32,9 +32,9 @@ ast_node *root = nullptr;
 %token <strv> STRING;
 %token <labelv> LABELN;
 
-%type <string> identifier number string sign label constant;
+%type <string> identifier number string sign label;
 %type <strvector> identifier_list label_list constant_list;
-%type <node> program_heading optional_program_heading block;
+%type <node> constant program_heading optional_program_heading block;
 %type <node> label_declaration_part constant_definition_part constant_definition;
 %type <node> constant_definition_list type_definition_part type_definition_list;
 %type <node> type_definition type_denoter enumeration subrange structured_type;
@@ -140,13 +140,35 @@ constant_definition: identifier EQUAL constant
                      $$ = make_node(N_CONSTANT_DEFINITION);
                      $$->list = {*($1), *($3)};
                    };
-constant: sign number { $$ = new std::string(*($1)); $$->append(*($2)); }
-        | sign identifier { $$ = new std::string(*($1)); $$->append(*($2)); }
-        | number { $$ = new std::string(*($1)); }
-        | identifier { $$ = new std::string(*($1)); }
-        | string { $$ = new std::string(*($1)); };
-sign: PLUS { $$ = new std::string($1, strlen($1)); }
-    | MINUS { $$ = new std::string($1, strlen($1)); };
+constant: sign number
+        {
+          $$ = make_node(N_CONSTANT);
+          $$->data = *($1);
+          $$->data.append(*($2));
+        }
+        | sign identifier
+        {
+          $$ = make_node(N_CONSTANT);
+          $$->data = *($1);
+          $$->data.append(*($2));
+        }
+        | number
+        {
+          $$ = make_node(N_CONSTANT);
+          $$->data = *($1);
+        }
+        | identifier
+        {
+          $$ = make_node(N_CONSTANT);
+          $$->data = *($1);
+        }
+        | string
+        {
+          $$ = make_node(N_CONSTANT_STR);
+          $$->data = *($1);
+        }
+sign: PLUS { $$ = new std::string("+"); }
+    | MINUS { $$ = new std::string("-"); };
 number: NUMBER { $$ = new std::string($1); };
 string: STRING { $$ = new std::string($1); };
 
