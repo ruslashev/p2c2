@@ -113,7 +113,7 @@ block: label_declaration_part
 label_declaration_part: empty { $$ = nullptr; }
                       | LABEL label_list SEMICOLON
                       {
-                        $$ = make_node(N_LABEL_DECL);
+                        $$ = make_node(N_LABEL_DECL_PART);
                         $$->list = *($2);
                       };
 label_list: label_list COMMA label { $$->push_back(*($3)); }
@@ -132,7 +132,7 @@ constant_definition_list: constant_definition_list SEMICOLON constant_definition
                         { $$->add_child($3); }
                         | constant_definition
                         {
-                          $$ = make_node(N_CONSTANT_DEFINITION_LIST);
+                          $$ = make_node(N_CONSTANT_DEF_PART);
                           $$->add_child($1);
                         };
 constant_definition: identifier EQUAL constant
@@ -157,7 +157,7 @@ type_definition_part: empty { $$ = nullptr; }
 type_definition_list: type_definition_list type_definition { $$->add_child($2); }
                     | type_definition
                     {
-                      $$ = make_node(N_TYPE_DEFINITION_LIST);
+                      $$ = make_node(N_TYPE_DEF_PART);
                       $$->add_child($1);
                     };
 /* General */
@@ -320,7 +320,7 @@ variable_declaration_list: variable_declaration_list SEMICOLON list_with_type
                          { $$->add_child($3); }
                          | list_with_type
                          {
-                           $$ = make_node(N_VARIABLE_DECL);
+                           $$ = make_node(N_VARIABLE_DECL_PART);
                            $$->add_child($1);
                          };
 
@@ -336,7 +336,7 @@ procedure_or_function_declaration_list: procedure_or_function_declaration_list
                                        { $$->add_child($3); }
                                        | procedure_or_funcion_declaration
                                        {
-                                         $$ = make_node(N_PROC_OR_FUNC_DECL_LIST);
+                                         $$ = make_node(N_PROC_OR_FUNC_DECL_PART);
                                          $$->add_child($1);
                                        };
 procedure_or_funcion_declaration: procedure_declaration { $$ = $1; }
@@ -585,7 +585,7 @@ compound_statement: TOKBEGIN statement_list END { $$ = $2; };
 statement_list: statement_list SEMICOLON statement { $$->add_child($3); }
               | statement
               {
-                $$ = make_node(N_STATEMENT_LIST);
+                $$ = make_node(N_STATEMENT_PART);
                 $$->add_child($1);
               };
 statement: label COLON simple_statement
