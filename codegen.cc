@@ -6,8 +6,8 @@
 
 static std::string *output_ptr;
 struct block {
-  std::map<std::string, ast_node> type_defs;
-  std::map<std::string, std::string> const_defs;
+  std::map<std::string, ast_node*> type_defs;
+  std::map<std::string, ast_node*> const_defs;
   std::vector<std::string> valid_labels;
 };
 
@@ -27,13 +27,12 @@ void generate_code(ast_node *root, std::string *output)
     if (child->type == N_PROGRAM_HEADING)
       program_name = child->data;
     else if (child->type == N_BLOCK) {
-      block new_block;
-      parse_block(child, &new_block);
+      parse_block(child, &root_block);
     }
   }
 
   if (!program_name.empty())
-    write("/* program %s */", program_name.c_str());
+    write("/* Program \"%s\" */", program_name.c_str());
 }
 
 static void parse_block(ast_node *node, block *out_block)
@@ -44,8 +43,7 @@ static void parse_block(ast_node *node, block *out_block)
         break;
       case N_CONSTANT_DEF_PART:
         for (ast_node *const_def : child->children) {
-          out_block->const_defs[const_def->list[0]] = const_def->list[1];
-          printf("%s = %s\n", const_def->list[0].c_str(), const_def->list[1].c_str());
+          out_block->const_defs[const_def->data] = const_def->children[0];
         }
         break;
       case N_TYPE_DEF_PART:

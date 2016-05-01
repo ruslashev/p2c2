@@ -33,8 +33,8 @@ ast_node *root = nullptr;
 %token <labelv> LABELN;
 
 %type <string> identifier number string sign label;
-%type <strvector> identifier_list label_list constant_list;
-%type <node> constant program_heading optional_program_heading block;
+%type <strvector> identifier_list label_list;
+%type <node> constant constant_list program_heading optional_program_heading block;
 %type <node> label_declaration_part constant_definition_part constant_definition;
 %type <node> constant_definition_list type_definition_part type_definition_list;
 %type <node> type_definition type_denoter enumeration subrange structured_type;
@@ -138,7 +138,8 @@ constant_definition_list: constant_definition_list SEMICOLON constant_definition
 constant_definition: identifier EQUAL constant
                    {
                      $$ = make_node(N_CONSTANT_DEFINITION);
-                     $$->list = {*($1), *($3)};
+                     $$->data = *($1);
+                     $$->add_child($3);
                    };
 constant: sign number
         {
@@ -164,7 +165,7 @@ constant: sign number
         }
         | string
         {
-          $$ = make_node(N_CONSTANT_STR);
+          $$ = make_node(N_CONSTANT_STRING);
           $$->data = *($1);
         }
 sign: PLUS { $$ = new std::string("+"); }
@@ -207,7 +208,8 @@ enumeration: LPAREN identifier_list RPAREN
 subrange: constant ELLIPSIS constant
         {
           $$ = make_node(N_SUBRANGE);
-          $$->list = {*($1), *($3)};
+          $$->add_child($1);
+          $$->add_child($3);
         };
 structured_type: array { $$ = $1; }
                | record { $$ = $1; }
@@ -305,14 +307,14 @@ variant_list: variant_list SEMICOLON variant { $$->add_child($3); }
 variant: constant_list COLON LPAREN field_list RPAREN
        {
          $$ = make_node(N_RECORD_VARIANT);
-         $$->list = *($1);
+         $$->add_child($1);
          $$->add_child($4);
        };
-constant_list: constant_list COMMA constant { $$->push_back(*($3)); }
+constant_list: constant_list COMMA constant { $$->add_child($3); }
              | constant
              {
-               $$ = new std::vector<std::string>;
-               $$->push_back(*($1));
+               $$ = make_node(N_CONSTANT_LIST);
+               $$->add_child($1);
              };
 /* -> Set-types */
 set: SET OF ordinal_type
@@ -686,7 +688,7 @@ case_element_list: case_element_list SEMICOLON case_element { $$->add_child($3);
 case_element: constant_list COLON statement
             {
               $$ = make_node(N_CASE_ELEMENT);
-              $$->list = *($1);
+              $$->add_child($1);
               $$->add_child($3);
             };
 repeat_statement: REPEAT statement_list UNTIL expression
