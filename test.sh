@@ -23,5 +23,5 @@ if [[ $? -eq 0 ]]; then
 	fi
 fi
 
-vim -u NONE scrap
+vim scrap
 

@@ -26,7 +26,7 @@ struct func_decl {
 
 struct block {
   std::vector<std::string> valid_labels;
-  std::map<std::string, ast_node*> const_defs;
+  std::vector<std::pair<std::string, ast_node*>> const_defs;
   std::map<std::string, ast_node*> type_defs;
   std::map<std::string, ast_node*> var_decls;
   std::vector<func_decl> func_decls;
@@ -37,6 +37,7 @@ static void write(const char *format, ...);
 static void parse_block(ast_node *node, block *out_block);
 static void parse_formal_parameter_list(ast_node *formal_parameter_list,
     func_decl *decl);
+static void write_block(block *b, bool root);
 
 static std::string *output_ptr;
 static std::vector<block*> allocated_bodies;
@@ -61,6 +62,8 @@ void generate_code(ast_node *root, std::string *output)
   if (!program_name.empty())
     write("/* Program \"%s\" */", program_name.c_str());
 
+  write_block(&root_block, true);
+
   for (block *body : allocated_bodies)
     delete body;
 }
@@ -75,7 +78,7 @@ static void parse_block(ast_node *node, block *out_block)
         break;
       case N_CONSTANT_DEF_PART:
         for (ast_node *const_def : child->children)
-          out_block->const_defs[const_def->data] = const_def->children[0];
+          out_block->const_defs.push_back(std::make_pair(const_def->data, const_def->children[0]));
         break;
       case N_TYPE_DEF_PART:
         for (ast_node *type_def : child->children)
@@ -191,5 +194,21 @@ static void write(const char *format, ...)
   output_ptr->append(linebuffer);
   extern std::string line_ending;
   output_ptr->append(line_ending);
+}
+
+static void write_block(block *b, bool root)
+{
+  if (root) {
+    write("#include <stdio.h>");
+    write("");
+    for (std::pair<std::string, ast_node*> const_def : b->const_defs) {
+      if (const_def.second->type == N_CONSTANT)
+        write("const int %s = %s;", const_def.first.c_str(),
+            const_def.second->data.c_str());
+      else
+        write("const char *%s = \"%s\";", const_def.first.c_str(),
+            const_def.second->data.c_str());
+    }
+  }
 }
 
