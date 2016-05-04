@@ -21,3 +21,6 @@ clean:
 vi:
 	vim lexer.l parser.y codegen.cc main.cc ast.cc utils.cc -p
 
+lines:
+	wc -l ast.* codegen.* lexer.l main.cc Makefile parser.y test.sh utils.*
+

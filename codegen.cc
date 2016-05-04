@@ -4,8 +4,7 @@
 #include <cstdarg>
 #include <map>
 #include <memory>
-
-static std::string *output_ptr;
+#include <vector>
 
 struct formal_parameter {
   std::string name;
@@ -21,7 +20,7 @@ struct func_decl {
   std::string name;
   bool forward;
   std::vector<formal_parameter> formal_parameters;
-  std::unique_ptr<block> body;
+  block *body;
   std::string returns;
 };
 
@@ -31,12 +30,16 @@ struct block {
   std::map<std::string, ast_node*> type_defs;
   std::map<std::string, ast_node*> var_decls;
   std::vector<func_decl> func_decls;
+  std::vector<ast_node*> statements;
 };
 
 static void write(const char *format, ...);
 static void parse_block(ast_node *node, block *out_block);
 static void parse_formal_parameter_list(ast_node *formal_parameter_list,
     func_decl *decl);
+
+static std::string *output_ptr;
+static std::vector<block*> allocated_bodies;
 
 void generate_code(ast_node *root, std::string *output)
 {
@@ -57,6 +60,9 @@ void generate_code(ast_node *root, std::string *output)
 
   if (!program_name.empty())
     write("/* Program \"%s\" */", program_name.c_str());
+
+  for (block *body : allocated_bodies)
+    delete body;
 }
 
 static void parse_block(ast_node *node, block *out_block)
@@ -82,23 +88,50 @@ static void parse_block(ast_node *node, block *out_block)
         break;
       case N_PROC_OR_FUNC_DECL_PART: {
         for (ast_node *proc_or_func_decl : child->children) {
-          func_decl decl { "", 0 };
+          func_decl decl;
           if (proc_or_func_decl->type == N_PROCEDURE_DECL) {
             ast_node *proc_heading = proc_or_func_decl->children[0];
             decl.name = proc_heading->data;
             if (proc_heading->children.size())
-              parse_formal_parameter_list(proc_heading, &decl);
+              parse_formal_parameter_list(proc_heading->children[0], &decl);
             if (proc_or_func_decl->children.size() == 1)
               decl.forward = true;
             else {
-              decl.body = std::unique_ptr<block>(new block);
-              parse_block(proc_or_func_decl->children[1], decl.body.get());
+              decl.forward = false;
+              decl.body = new block;
+              allocated_bodies.push_back(decl.body);
+              parse_block(proc_or_func_decl->children[1], decl.body);
             }
             decl.returns = "";
-          } else
+          } else if (proc_or_func_decl->type == N_FUNCTION_DECL) {
+            ast_node *heading_or_ident = proc_or_func_decl->children[0];
+            if (heading_or_ident->type == N_FUNCTION_HEADING) {
+              decl.name = heading_or_ident->list[0];
+              decl.returns = heading_or_ident->list[1];
+              if (heading_or_ident->children.size())
+                parse_formal_parameter_list(heading_or_ident->children[0],
+                    &decl);
+            } else /* N_FUNCTION_IDENT_HEADING */ {
+              decl.name = heading_or_ident->data;
+              decl.returns = "";
+            }
+            if (proc_or_func_decl->children.size() == 1)
+              decl.forward = true;
+            else {
+              decl.forward = false;
+              decl.body = new block;
+              allocated_bodies.push_back(decl.body);
+              parse_block(proc_or_func_decl->children[1], decl.body);
+            }
+          }
+          out_block->func_decls.push_back(decl);
         }
         break;
       }
+      case N_STATEMENT_PART:
+        for (ast_node *statement : child->children)
+          out_block->statements.push_back(statement);
+        break;
       default:
         break;
     }
@@ -140,6 +173,9 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
         decl->formal_parameters.push_back(p);
         break;
       }
+      default:
+        die("Syntax error: unhandled type \"%s\" in formal parameter section",
+            type_to_str(formal_parameter_node->type).c_str());
     }
 }
 
