@@ -53,13 +53,11 @@ void generate_code(ast_node *root, std::string *output)
   block root_block;
 
   ast_node *p = root;
-  for (ast_node *child : p->children) {
+  for (ast_node *child : p->children)
     if (child->type == N_PROGRAM_HEADING)
       program_name = child->data;
-    else if (child->type == N_BLOCK) {
+    else if (child->type == N_BLOCK)
       parse_block(child, &root_block);
-    }
-  }
 
   if (!program_name.empty())
     writeln("/* Program \"%s\" */", program_name.c_str());
@@ -239,6 +237,11 @@ static void write_block(block *b, bool root)
   }
 }
 
+static std::string type_def_to_str(ast_node *type_def)
+{
+
+}
+
 static void write_block_variables(block *b)
 {
   for (std::pair<std::vector<std::string>, ast_node*> var_decl : b->var_decls) {
@@ -247,20 +250,22 @@ static void write_block_variables(block *b)
     switch (type_denoter->type) {
       case N_IDENTIFIER: {
         std::string simple_type = type_denoter->data,
-          simple_type_lower = to_lower(simple_type);
+          simple_type_lower = to_lower(simple_type),
+          output_type_str = "";
         if (simple_type_lower == "integer")
-          write("int ");
+          output_type_str = "int";
         else if (simple_type_lower == "real")
-          write("float ");
+          output_type_str = "float";
         else if (simple_type_lower == "boolean")
-          write("bool ");
+          output_type_str = "bool";
         else if (simple_type_lower == "char")
-          write("char ");
+          output_type_str  = "char";
         else if (b->type_defs.count(simple_type))
-          write("%s ", simple_type.c_str());
+          output_type_str = simple_type;
         else
           die("Syntax error: unknown type \"%s\" "
               "in variable declaration of \"%s\"", simple_type, names[0]);
+        writeln("%s %s;", output_type_str.c_str(), join(names, ", ").c_str());
         break;
       }
       case N_ENUMERATION:

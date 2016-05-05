@@ -64,5 +64,16 @@ std::string to_lower(std::string &str)
   return out;
 }
 
+std::string join(std::vector<std::string> &v, std::string delimiter)
+{
+  std::string out = "";
+  for (size_t i = 0; i < v.size() - 1; i++) {
+    out.append(v[i]);
+    out.append(delimiter);
+  }
+  out.append(v[v.size() - 1]);
+  return out;
+}
+
 // vim: et:ts=2:sw=2
 
