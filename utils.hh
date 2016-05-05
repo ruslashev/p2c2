@@ -9,4 +9,5 @@ void dputs(std::string s);
 void dprintf(const char *format, ...);
 void green();
 void reset();
+std::string to_lower(std::string &str);
 

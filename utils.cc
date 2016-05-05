@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdarg>
+#include <locale>
 
 void yyerror(const char *s)
 {
@@ -52,6 +53,15 @@ void reset()
   extern int color;
   if (color)
     fputs("\x1b[0m", stdout);
+}
+
+std::string to_lower(std::string &str)
+{
+  std::locale loc;
+  std::string out = "";
+  for (size_t i = 0; i < str.length(); i++)
+    out.push_back(std::tolower(str[i], loc));
+  return out;
 }
 
 // vim: et:ts=2:sw=2
