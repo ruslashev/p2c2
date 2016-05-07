@@ -41,7 +41,7 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
 static void write_block(block *b, bool root);
 static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
-    std::string debugging_var_name);
+    std::string var_name, bool *allow_merged_decl);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
@@ -198,8 +198,10 @@ static void write_block(block *b, bool root)
   if (root) {
     writeln("#include <stdio.h>");
     writeln("#include <limits.h>");
+    writeln("");
     writeln("#define maxint INT_MAX");
     writeln("#define minint INT_MIN");
+    writeln("");
     writeln("template <int l, int h>");
     writeln("struct subrange {");
     writeln("  int v;");
@@ -207,11 +209,24 @@ static void write_block(block *b, bool root)
     writeln("  operator int() { return v; }");
     writeln("  subrange& operator=(const int nv) {");
     writeln("    (nv >= l && nv <= h) ? (v = nv) :");
-    writeln("      printf(\"Error: subrange value %d is out of its bounds\n\", v);");
+    write  ("      printf(\"Error: subrange value %d is out of ");
+    writeln("its bounds\n\", v);");
     writeln("    return *this;");
     writeln("  }");
     writeln("};");
     writeln("");
+
+    writeln("template <int l, int h, class T>");
+    writeln("struct array {");
+    writeln("  T value[h - l + 1];");
+    writeln("  T& operator[](int i) {");
+    writeln("    return (i >= l && i <= h)");
+    writeln("      ? value[i - l] ");
+    write  ("      : printf(\"Error: indexing array out of bounds ");
+    writeln("(%d)\n\", i);");
+    writeln("  }");
+    writeln("};");
+
     if (b->const_defs.size()) {
       for (std::pair<std::string, ast_node*> const_def : b->const_defs) {
         if (const_def.second->type == N_CONSTANT)
@@ -235,15 +250,18 @@ static void write_block_variables(block *b)
   for (std::pair<std::vector<std::string>, ast_node*> var_decl : b->var_decls) {
     std::vector<std::string> names = var_decl.first;
     ast_node *type_denoter = var_decl.second;
+    bool allow_merged_decl;
     std::string type_denoter_str = type_denoter_to_str(type_denoter, b,
-        names[0]);
+        names[0], &allow_merged_decl);
   }
 }
 
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
-    std::string debugging_var_name)
+    std::string var_name, bool *allow_merged_decl)
 {
   std::string out = "";
+  if (allow_merged_decl)
+    *allow_merged_decl = true;
   switch (type_denoter->type) {
     case N_IDENTIFIER: {
       std::string simple_type = type_denoter->data,
@@ -287,8 +305,24 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       out = "subrange<" + lhs->data + "," + rhs->data + ">";
       break;
     }
-    case N_ARRAY:
+    case N_ARRAY: {
+      if (allow_merged_decl)
+        *allow_merged_decl = false;
+      ast_node *index_type_list = type_denoter->children[0],
+        *array_type_denoter = type_denoter->children[1];
+      out += type_denoter_to_str(array_type_denoter, b, var_name, nullptr);
+      out += " " + var_name;
+      for (ast_node *ordinal_type : index_type_list->children)
+        switch (ordinal_type->type) {
+          case N_ENUMERATION:
+            break;
+          case N_SUBRANGE:
+            break;
+          case N_IDENTIFIER:
+            break;
+        }
       break;
+    }
     case N_RECORD:
       break;
     case N_SET:
