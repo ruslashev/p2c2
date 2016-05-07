@@ -31,15 +31,19 @@ struct block {
   std::vector<std::pair<std::vector<std::string>, ast_node*>> var_decls;
   std::vector<func_decl> func_decls;
   std::vector<ast_node*> statements;
+  block *prev;
+  block() : prev(nullptr) {};
 };
 
-static void write(const char *format, ...);
-static void writeln(const char *format, ...);
 static void parse_block(ast_node *node, block *out_block);
 static void parse_formal_parameter_list(ast_node *formal_parameter_list,
     func_decl *decl);
 static void write_block(block *b, bool root);
 static void write_block_variables(block *b);
+static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
+    std::string debugging_var_name);
+static void write(const char *format, ...);
+static void writeln(const char *format, ...);
 
 static std::string *output_ptr;
 static std::vector<block*> allocated_bodies;
@@ -107,6 +111,7 @@ static void parse_block(ast_node *node, block *out_block)
             else {
               decl.forward = false;
               decl.body = new block;
+              decl.body->prev = out_block;
               allocated_bodies.push_back(decl.body);
               parse_block(proc_or_func_decl->children[1], decl.body);
             }
@@ -128,6 +133,7 @@ static void parse_block(ast_node *node, block *out_block)
             else {
               decl.forward = false;
               decl.body = new block;
+              decl.body->prev = out_block;
               allocated_bodies.push_back(decl.body);
               parse_block(proc_or_func_decl->children[1], decl.body);
             }
@@ -187,6 +193,117 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
     }
 }
 
+static void write_block(block *b, bool root)
+{
+  if (root) {
+    writeln("#include <stdio.h>");
+    writeln("#include <limits.h>");
+    writeln("#define maxint INT_MAX");
+    writeln("#define minint INT_MIN");
+    writeln("template <int l, int h>");
+    writeln("struct subrange {");
+    writeln("  int v;");
+    writeln("  subrange() {}");
+    writeln("  operator int() { return v; }");
+    writeln("  subrange& operator=(const int nv) {");
+    writeln("    (nv >= l && nv <= h) ? (v = nv) :");
+    writeln("      printf(\"Error: subrange value %d is out of its bounds\n\", v);");
+    writeln("    return *this;");
+    writeln("  }");
+    writeln("};");
+    writeln("");
+    if (b->const_defs.size()) {
+      for (std::pair<std::string, ast_node*> const_def : b->const_defs) {
+        if (const_def.second->type == N_CONSTANT)
+          writeln("const int %s = %s;", const_def.first.c_str(),
+              const_def.second->data.c_str());
+        else
+          writeln("const char *%s = \"%s\";", const_def.first.c_str(),
+              const_def.second->data.c_str());
+      }
+      writeln("");
+    }
+    if (b->var_decls.size()) {
+      write_block_variables(b);
+      writeln("");
+    }
+  }
+}
+
+static void write_block_variables(block *b)
+{
+  for (std::pair<std::vector<std::string>, ast_node*> var_decl : b->var_decls) {
+    std::vector<std::string> names = var_decl.first;
+    ast_node *type_denoter = var_decl.second;
+    std::string type_denoter_str = type_denoter_to_str(type_denoter, b,
+        names[0]);
+  }
+}
+
+static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
+    std::string debugging_var_name)
+{
+  std::string out = "";
+  switch (type_denoter->type) {
+    case N_IDENTIFIER: {
+      std::string simple_type = type_denoter->data,
+        simple_type_lower = to_lower(simple_type);
+      if (simple_type_lower == "integer")
+        out = "int";
+      else if (simple_type_lower == "real")
+        out = "float";
+      else if (simple_type_lower == "boolean")
+        out = "bool";
+      else if (simple_type_lower == "char")
+        out  = "char";
+      else {
+        block *itb = b;
+        ast_node *type_alias_data = nullptr;
+        while (itb != nullptr && type_alias_data == nullptr) {
+          if (itb->type_defs.count(simple_type))
+            type_alias_data = itb->type_defs[simple_type];
+          else
+            itb = b->prev;
+        }
+        if (type_alias_data == nullptr)
+          die("Syntax error: unknown type \"%s\" in variable declaration "
+              "of \"%s\"", simple_type, debugging_var_name.c_str());
+        out = type_denoter_to_str(type_alias_data, b, debugging_var_name);
+      }
+      break;
+    }
+    case N_ENUMERATION: {
+      out += "enum {";
+      out += join(type_denoter->list, "; ");
+      out += "};";
+      break;
+    }
+    case N_SUBRANGE: {
+      ast_node *lhs = type_denoter->children[0],
+        *rhs = type_denoter->children[1];
+      if (lhs->type == N_CONSTANT_STRING || rhs->type == N_CONSTANT_STRING)
+        die("Subrange (%s..%s): strings cannot be bounds", lhs->data.c_str(),
+            rhs->data.c_str());
+      out = "subrange<" + lhs->data + "," + rhs->data + ">";
+      break;
+    }
+    case N_ARRAY:
+      break;
+    case N_RECORD:
+      break;
+    case N_SET:
+      break;
+    case N_FILE_TYPE:
+      break;
+    case N_POINTER_TYPE:
+      break;
+    default:
+      die("Syntax error: unhandled type \"%s\" in variable type",
+          type_to_str(type_denoter->type).c_str());
+  }
+  return out;
+}
+
 static void write(const char *format, ...)
 {
   char linebuffer[1024];
@@ -211,81 +328,5 @@ static void writeln(const char *format, ...)
   output_ptr->append(linebuffer);
   extern std::string line_ending;
   output_ptr->append(line_ending);
-}
-
-static void write_block(block *b, bool root)
-{
-  if (root) {
-    writeln("#include <stdio.h>");
-    // writeln("#include <limits.h>");
-    writeln("");
-    if (b->const_defs.size()) {
-      for (std::pair<std::string, ast_node*> const_def : b->const_defs) {
-        if (const_def.second->type == N_CONSTANT)
-          writeln("const int %s = %s;", const_def.first.c_str(),
-              const_def.second->data.c_str());
-        else
-          writeln("const char *%s = \"%s\";", const_def.first.c_str(),
-              const_def.second->data.c_str());
-      }
-      writeln("");
-    }
-    if (b->var_decls.size()) {
-      write_block_variables(b);
-      writeln("");
-    }
-  }
-}
-
-static std::string type_def_to_str(ast_node *type_def)
-{
-
-}
-
-static void write_block_variables(block *b)
-{
-  for (std::pair<std::vector<std::string>, ast_node*> var_decl : b->var_decls) {
-    std::vector<std::string> names = var_decl.first;
-    ast_node *type_denoter = var_decl.second;
-    switch (type_denoter->type) {
-      case N_IDENTIFIER: {
-        std::string simple_type = type_denoter->data,
-          simple_type_lower = to_lower(simple_type),
-          output_type_str = "";
-        if (simple_type_lower == "integer")
-          output_type_str = "int";
-        else if (simple_type_lower == "real")
-          output_type_str = "float";
-        else if (simple_type_lower == "boolean")
-          output_type_str = "bool";
-        else if (simple_type_lower == "char")
-          output_type_str  = "char";
-        else if (b->type_defs.count(simple_type))
-          output_type_str = simple_type;
-        else
-          die("Syntax error: unknown type \"%s\" "
-              "in variable declaration of \"%s\"", simple_type, names[0]);
-        writeln("%s %s;", output_type_str.c_str(), join(names, ", ").c_str());
-        break;
-      }
-      case N_ENUMERATION:
-        break;
-      case N_SUBRANGE:
-        break;
-      case N_ARRAY:
-        break;
-      case N_RECORD:
-        break;
-      case N_SET:
-        break;
-      case N_FILE_TYPE:
-        break;
-      case N_POINTER_TYPE:
-        break;
-      default:
-        die("Syntax error: unhandled type \"%s\" in variable type",
-            type_to_str(type_denoter->type).c_str());
-    }
-  }
 }
 
