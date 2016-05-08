@@ -202,10 +202,11 @@ static void write_block(block *b, bool root)
     writeln("#define maxint INT_MAX");
     writeln("#define minint INT_MIN");
     writeln("");
+    writeln("#ifdef __cplusplus");
     writeln("template <int l, int h>");
     writeln("struct subrange {");
     writeln("  int v;");
-    writeln("  subrange() {}");
+    writeln("  subrange() {}"); // TODO
     writeln("  operator int() { return v; }");
     writeln("  subrange& operator=(const int nv) {");
     writeln("    (nv >= l && nv <= h) ? (v = nv) :");
@@ -215,7 +216,6 @@ static void write_block(block *b, bool root)
     writeln("  }");
     writeln("};");
     writeln("");
-
     writeln("template <int l, int h, class T>");
     writeln("struct array {");
     writeln("  T value[h - l + 1];");
@@ -226,6 +226,8 @@ static void write_block(block *b, bool root)
     writeln("(%d)\n\", i);");
     writeln("  }");
     writeln("};");
+    writeln("#endif");
+    writeln("");
 
     if (b->const_defs.size()) {
       for (std::pair<std::string, ast_node*> const_def : b->const_defs) {
@@ -285,23 +287,28 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
         }
         if (type_alias_data == nullptr)
           die("Syntax error: unknown type \"%s\" in variable declaration "
-              "of \"%s\"", simple_type, debugging_var_name.c_str());
-        out = type_denoter_to_str(type_alias_data, b, debugging_var_name);
+              "of \"%s\"", simple_type, var_name.c_str());
+        out = type_denoter_to_str(type_alias_data, b, var_name, nullptr);
       }
       break;
     }
     case N_ENUMERATION: {
       out += "enum {";
-      out += join(type_denoter->list, "; ");
-      out += "};";
+      for (size_t i = 0; i < type_denoter->list.size() - 1; i++) {
+        out += type_denoter->list[i];
+        out += " = " + std::to_string(i) + "; ";
+      }
+      out += type_denoter->list[type_denoter->list.size() - 1];
+      out += " = " + std::to_string(type_denoter->list.size() - 1);
+      out += " };";
       break;
     }
     case N_SUBRANGE: {
       ast_node *lhs = type_denoter->children[0],
         *rhs = type_denoter->children[1];
       if (lhs->type == N_CONSTANT_STRING || rhs->type == N_CONSTANT_STRING)
-        die("Subrange (%s..%s): strings cannot be bounds", lhs->data.c_str(),
-            rhs->data.c_str());
+        die("Subrange \"%s\"(%s..%s): strings cannot be bounds",
+            var_name.c_str(), lhs->data.c_str(), rhs->data.c_str());
       out = "subrange<" + lhs->data + "," + rhs->data + ">";
       break;
     }
@@ -314,8 +321,10 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       out += " " + var_name;
       for (ast_node *ordinal_type : index_type_list->children)
         switch (ordinal_type->type) {
-          case N_ENUMERATION:
+          case N_ENUMERATION: {
+
             break;
+          }
           case N_SUBRANGE:
             break;
           case N_IDENTIFIER:
