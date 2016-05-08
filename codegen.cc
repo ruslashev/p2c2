@@ -219,7 +219,7 @@ static void write_block(block *b, bool root)
     writeln("template <int l, int h, class T>");
     writeln("struct array {");
     writeln("  T value[h - l + 1];");
-    writeln("  T& operator[](int i) {");
+    writeln("  T& operator[](const int i) {");
     writeln("    return (i >= l && i <= h)");
     writeln("      ? value[i - l] ");
     write  ("      : printf(\"Error: indexing array out of bounds ");
@@ -275,7 +275,7 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       else if (simple_type_lower == "boolean")
         out = "bool";
       else if (simple_type_lower == "char")
-        out  = "char";
+        out = "char";
       else {
         block *itb = b;
         ast_node *type_alias_data = nullptr;
@@ -317,19 +317,46 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
         *allow_merged_decl = false;
       ast_node *index_type_list = type_denoter->children[0],
         *array_type_denoter = type_denoter->children[1];
-      out += type_denoter_to_str(array_type_denoter, b, var_name, nullptr);
-      out += " " + var_name;
-      for (ast_node *ordinal_type : index_type_list->children)
+      std::string of_type = type_denoter_to_str(array_type_denoter, b,
+          var_name, nullptr);
+      for (ast_node *ordinal_type : index_type_list->children) {
         switch (ordinal_type->type) {
           case N_ENUMERATION: {
-
+            out += "array<" + ordinal_type->list[0] + "," +
+              ordinal_type->list[1] + ",";
             break;
           }
-          case N_SUBRANGE:
+          case N_SUBRANGE: {
+            ast_node *lhs = ordinal_type->children[0],
+              *rhs = ordinal_type->children[1];
+            if (lhs->type == N_CONSTANT_STRING || rhs->type == N_CONSTANT_STRING)
+              die("Array \"%s\"(%s..%s): strings cannot be bounds",
+                  var_name.c_str(), lhs->data.c_str(), rhs->data.c_str());
+            out += "array<" + lhs->data + "," + rhs->data;
             break;
-          case N_IDENTIFIER:
+          }
+          case N_IDENTIFIER: {
+            std::string data = type_denoter_to_str(ordinal_type, b, var_name,
+                nullptr);
+            if (data == "bool")
+              out += "array<0,1,";
+            else if (data == "char")
+              out += "array<-127,128,";
+            else if (data == "int")
+              out += "array<INT_MIN,INT_MAX,";
+            else if (data == "float")
+              die("Array \"%s\": arrays cannot be indexed by real-type",
+                  var_name.c_str());
+            else
+              die("Array \"%s\": attempt to use unknown non-ordinal type "
+                  "\"%s\"(\"%s\") for indexing", var_name.c_str(),
+                  ordinal_type->data.c_str(), data.c_str());
             break;
+          }
         }
+        if (ordinal_type == index_type_list->children.back())
+          out += of_type + ">";
+      }
       break;
     }
     case N_RECORD:

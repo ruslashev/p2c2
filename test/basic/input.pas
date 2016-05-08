@@ -14,6 +14,7 @@ type
   yyk = red..green;
   shape = (triangle, rectangle, circle);
   punchedcard = array [1..80] of char;
+  wake_me_up = array [(the, ride, never, ends)] of (how, can, you, see, into, my, eyes);
   win = array [Boolean] of colour;
   size = 1..20;
   send = array [Boolean] of array [1..10] of array [size] of real;
