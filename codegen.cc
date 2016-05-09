@@ -93,7 +93,8 @@ static void parse_block(ast_node *node, block *out_block)
         break;
       case N_TYPE_DEF_PART:
         for (ast_node *type_def : child->children)
-          out_block->type_defs[type_def->data] = type_def->children[0];
+          out_block->type_defs[to_lower(type_def->data)] =
+            type_def->children[0];
         break;
       case N_VARIABLE_DECL_PART:
         for (ast_node *var_decl : child->children) {
@@ -296,15 +297,14 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     *allow_merged_decl = true;
   switch (type_denoter->type) {
     case N_IDENTIFIER: {
-      std::string simple_type = type_denoter->data,
-        simple_type_lower = to_lower(simple_type);
-      if (simple_type_lower == "integer")
+      std::string simple_type = to_lower(type_denoter->data);
+      if (simple_type == "integer")
         out = "int";
-      else if (simple_type_lower == "real")
+      else if (simple_type == "real")
         out = "float";
-      else if (simple_type_lower == "boolean")
+      else if (simple_type == "boolean")
         out = "bool";
-      else if (simple_type_lower == "char")
+      else if (simple_type == "char")
         out = "char";
       else {
         block *itb = b;
@@ -317,29 +317,43 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
         }
         if (type_alias_data == nullptr)
           die("Syntax error: unknown type \"%s\" in variable declaration "
-              "of \"%s\"", simple_type, var_name.c_str());
+              "of \"%s\"", type_denoter->data.c_str(), var_name.c_str());
         out = type_denoter_to_str(type_alias_data, b, var_name, nullptr);
       }
       break;
     }
     case N_ENUMERATION: {
-      out += "enum {";
+      out += "enum { ";
       for (size_t i = 0; i < type_denoter->list.size() - 1; i++) {
         out += type_denoter->list[i];
         out += " = " + std::to_string(i) + "; ";
       }
       out += type_denoter->list[type_denoter->list.size() - 1];
       out += " = " + std::to_string(type_denoter->list.size() - 1);
-      out += " };";
+      out += " }";
       break;
     }
     case N_SUBRANGE: {
       ast_node *lhs = type_denoter->children[0],
         *rhs = type_denoter->children[1];
-      if (lhs->type == N_CONSTANT_STRING || rhs->type == N_CONSTANT_STRING)
-        die("Subrange \"%s\"(%s..%s): strings cannot be bounds",
-            var_name.c_str(), lhs->data.c_str(), rhs->data.c_str());
-      out = "subrange<" + lhs->data + "," + rhs->data + ">";
+      out = "subrange<";
+
+      if (lhs->type == N_CONSTANT)
+        out += lhs->data + ",";
+      else if (lhs->type == N_CONSTANT_STRING && lhs->data.size() == 1)
+        out += "'" + lhs->data + "',";
+      else
+        die("Subrange \"%s\" left limit (>\"%s\"<..\"%s\"): strings cannot be "
+            "bounds", var_name.c_str(), lhs->data.c_str(), rhs->data.c_str());
+
+      if (rhs->type == N_CONSTANT)
+        out += rhs->data + ">";
+      else if (rhs->type == N_CONSTANT_STRING && rhs->data.size() == 1)
+        out += "'" + rhs->data + "'>";
+      else
+        die("Subrange \"%s\" right limit (\"%s\"..>\"%s\"<): strings cannot be "
+            "bounds", var_name.c_str(), lhs->data.c_str(), rhs->data.c_str());
+
       break;
     }
     case N_ARRAY: {
@@ -348,46 +362,76 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       std::string of_type = type_denoter_to_str(array_type_denoter, b,
           var_name, nullptr);
       for (ast_node *ordinal_type : index_type_list->children) {
-        switch (ordinal_type->type) {
-          case N_ENUMERATION: {
-            out += "array<" + ordinal_type->list[0] + "," +
-              ordinal_type->list[1] + ",";
-            break;
+        bool found = false;
+        ast_node *it_type = ordinal_type;
+        while (!found) {
+          switch (it_type->type) {
+            case N_ENUMERATION: {
+              out += "array<" + it_type->list[0] + "," + it_type->list.back() + ",";
+              found = true;
+              break;
+            }
+            case N_SUBRANGE: {
+              ast_node *lhs = it_type->children[0], *rhs = it_type->children[1];
+              out += "array<";
+              if (lhs->type == N_CONSTANT)
+                out += lhs->data + ",";
+              else if (lhs->type == N_CONSTANT_STRING && lhs->data.size() == 1)
+                out += "'" + lhs->data + "',";
+              else
+                die("Array \"%s\" left limit (>\"%s\"<..\"%s\"): strings "
+                    "cannot be bounds", var_name.c_str(), lhs->data.c_str(),
+                    rhs->data.c_str());
+              if (rhs->type == N_CONSTANT)
+                out += rhs->data + ",";
+              else if (rhs->type == N_CONSTANT_STRING && rhs->data.size() == 1)
+                out += "'" + rhs->data + "',";
+              else
+                die("Array \"%s\" right limit (\"%s\"..>\"%s\"<): strings "
+                    "cannot be bounds", var_name.c_str(), lhs->data.c_str(),
+                    rhs->data.c_str());
+              found = true;
+              break;
+            }
+            case N_IDENTIFIER: {
+              std::string simple_type = to_lower(it_type->data);
+              if (simple_type == "integer") {
+                out += "array<INT_MIN,INT_MAX,";
+                found = true;
+              } else if (simple_type == "real")
+                die("Array \"%s\": arrays cannot be indexed by real-type",
+                    simple_type.c_str());
+              else if (simple_type == "boolean") {
+                out += "array<0,1,";
+                found = true;
+              } else if (simple_type == "char") {
+                out += "array<-127,128,";
+                found = true;
+              } else {
+                block *itb = b;
+                ast_node *type_alias_data = nullptr;
+                while (itb != nullptr && type_alias_data == nullptr) {
+                  if (itb->type_defs.count(simple_type))
+                    type_alias_data = itb->type_defs[simple_type];
+                  else
+                    itb = b->prev;
+                }
+                if (type_alias_data == nullptr)
+                  die("Syntax error: unknown type \"%s\" in index type "
+                      "declaration of array \"%s\"", it_type->data.c_str(),
+                      var_name.c_str());
+                it_type = type_alias_data;
+              }
+              break;
+            }
+            default:
+              die("Unexpected ordinal type %s in array declaration of %s",
+                  type_to_str(it_type->type).c_str(), var_name.c_str());
           }
-          case N_SUBRANGE: {
-            ast_node *lhs = ordinal_type->children[0],
-              *rhs = ordinal_type->children[1];
-            if (lhs->type == N_CONSTANT_STRING || rhs->type == N_CONSTANT_STRING)
-              die("Array \"%s\"(%s..%s): strings cannot be bounds",
-                  var_name.c_str(), lhs->data.c_str(), rhs->data.c_str());
-            out += "array<" + lhs->data + "," + rhs->data + ",";
-            break;
-          }
-          case N_IDENTIFIER: {
-            std::string data = type_denoter_to_str(ordinal_type, b, var_name,
-                nullptr);
-            if (data == "bool")
-              out += "array<0,1,";
-            else if (data == "char")
-              out += "array<-127,128,";
-            else if (data == "int")
-              out += "array<INT_MIN,INT_MAX,";
-            else if (data == "float")
-              die("Array \"%s\": arrays cannot be indexed by real-type",
-                  var_name.c_str());
-            else
-              die("Array \"%s\": attempt to use unknown non-ordinal type "
-                  "\"%s\"(\"%s\") for indexing", var_name.c_str(),
-                  ordinal_type->data.c_str(), data.c_str());
-            break;
-          }
-          default:
-            die("Unexpected ordinal type %s in array declaration of %s",
-                type_to_str(ordinal_type->type).c_str(), var_name.c_str());
         }
         if (ordinal_type == index_type_list->children.back()) {
           std::string closings = "";
-          for (int i = 0; i < index_type_list->children.size(); i++)
+          for (size_t i = 0; i < index_type_list->children.size(); i++)
             closings += ">";
           out += of_type + closings;
         }

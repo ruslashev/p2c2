@@ -1,6 +1,11 @@
 program add;
 
+type why = real;
+     whyy = why;
+	 whyyy = whyy;
+
 var num1, num2, sum : integer;
+    f : whyyy;
 
 begin
   write('input number 1:');
