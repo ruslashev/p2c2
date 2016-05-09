@@ -1,6 +1,7 @@
 program ye(wyt, what);
 label 420, 2517;
 const im_givin_up = -4; on_trying = +20; to_sell_you_things = 'that you aint buying';
+      coat = 'steel';
 type
   natural = 0..maxint;
   count = integer;

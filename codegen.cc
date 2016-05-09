@@ -26,7 +26,8 @@ struct func_decl {
 
 struct block {
   std::vector<std::string> valid_labels;
-  std::vector<std::pair<std::string, ast_node*>> const_defs;
+  std::vector<std::pair<std::string, ast_node*>> const_defs_numbers;
+  std::vector<std::pair<std::string, ast_node*>> const_defs_strings;
   std::map<std::string, ast_node*> type_defs;
   std::vector<std::pair<std::vector<std::string>, ast_node*>> var_decls;
   std::vector<func_decl> func_decls;
@@ -39,6 +40,7 @@ static void parse_block(ast_node *node, block *out_block);
 static void parse_formal_parameter_list(ast_node *formal_parameter_list,
     func_decl *decl);
 static void write_block(block *b, bool root);
+static void write_block_constants(block *b);
 static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     std::string var_name, bool *allow_merged_decl);
@@ -82,8 +84,12 @@ static void parse_block(ast_node *node, block *out_block)
         break;
       case N_CONSTANT_DEF_PART:
         for (ast_node *const_def : child->children)
-          out_block->const_defs.push_back(std::make_pair(const_def->data,
-                const_def->children[0]));
+          if (const_def->children[0]->type == N_CONSTANT)
+            out_block->const_defs_numbers.push_back(
+                std::make_pair(const_def->data, const_def->children[0]));
+          else
+            out_block->const_defs_strings.push_back(
+                std::make_pair(const_def->data, const_def->children[0]));
         break;
       case N_TYPE_DEF_PART:
         for (ast_node *type_def : child->children)
@@ -147,7 +153,8 @@ static void parse_block(ast_node *node, block *out_block)
           out_block->statements.push_back(statement);
         break;
       default:
-        break;
+        die("Unexpected block element type %s",
+            type_to_str(child->type).c_str());
     }
   }
 }
@@ -198,6 +205,7 @@ static void write_block(block *b, bool root)
   if (root) {
     writeln("#include <stdio.h>");
     writeln("#include <limits.h>");
+    /*
     writeln("");
     writeln("#define maxint INT_MAX");
     writeln("#define minint INT_MIN");
@@ -210,8 +218,8 @@ static void write_block(block *b, bool root)
     writeln("  operator int() { return v; }");
     writeln("  subrange& operator=(const int nv) {");
     writeln("    (nv >= l && nv <= h) ? (v = nv) :");
-    write  ("      printf(\"Error: subrange value %d is out of ");
-    writeln("its bounds\n\", v);");
+    write  ("      printf(\"Error: subrange value %%d is out of ");
+    writeln("its bounds\\n\", v);");
     writeln("    return *this;");
     writeln("  }");
     writeln("};");
@@ -223,28 +231,45 @@ static void write_block(block *b, bool root)
     writeln("    return (i >= l && i <= h)");
     writeln("      ? value[i - l] ");
     write  ("      : printf(\"Error: indexing array out of bounds ");
-    writeln("(%d)\n\", i);");
+    writeln("(%%d)\\n\", i);");
     writeln("  }");
     writeln("};");
     writeln("#endif");
     writeln("");
+    writeln("typedef float real;");
+    writeln("");
+    */
+    writeln("");
 
-    if (b->const_defs.size()) {
-      for (std::pair<std::string, ast_node*> const_def : b->const_defs) {
-        if (const_def.second->type == N_CONSTANT)
-          writeln("const int %s = %s;", const_def.first.c_str(),
-              const_def.second->data.c_str());
-        else
-          writeln("const char *%s = \"%s\";", const_def.first.c_str(),
-              const_def.second->data.c_str());
-      }
-      writeln("");
-    }
-    if (b->var_decls.size()) {
-      write_block_variables(b);
-      writeln("");
-    }
+    write_block_constants(b);
+    write_block_variables(b);
   }
+}
+
+static void write_block_constants(block *b)
+{
+  bool end_nl = (b->const_defs_numbers.size() || b->const_defs_strings.size());
+  if (b->const_defs_numbers.size()) {
+    write("const int ");
+    std::pair<std::string, ast_node*> last_def = b->const_defs_numbers.back();
+    b->const_defs_numbers.pop_back();
+    for (std::pair<std::string, ast_node*> const_def : b->const_defs_numbers)
+      write("%s = %s, ", const_def.first.c_str(),
+          const_def.second->data.c_str());
+    writeln("%s = %s;", last_def.first.c_str(), last_def.second->data.c_str());
+  }
+  if (b->const_defs_strings.size()) {
+    write("const char ");
+    std::pair<std::string, ast_node*> last_def = b->const_defs_strings.back();
+    b->const_defs_strings.pop_back();
+    for (std::pair<std::string, ast_node*> const_def : b->const_defs_strings)
+      write("*%s = \"%s\", ", const_def.first.c_str(),
+          const_def.second->data.c_str());
+    writeln("*%s = \"%s\";", last_def.first.c_str(),
+        last_def.second->data.c_str());
+  }
+  if (end_nl)
+    writeln("");
 }
 
 static void write_block_variables(block *b)
@@ -255,7 +280,12 @@ static void write_block_variables(block *b)
     bool allow_merged_decl;
     std::string type_denoter_str = type_denoter_to_str(type_denoter, b,
         names[0], &allow_merged_decl);
+    if (allow_merged_decl) {
+      writeln("%s %s;", type_denoter_str.c_str(), join(names, ", ").c_str());
+    }
   }
+  if (b->var_decls.size())
+    writeln("");
 }
 
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
@@ -313,8 +343,6 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       break;
     }
     case N_ARRAY: {
-      if (allow_merged_decl)
-        *allow_merged_decl = false;
       ast_node *index_type_list = type_denoter->children[0],
         *array_type_denoter = type_denoter->children[1];
       std::string of_type = type_denoter_to_str(array_type_denoter, b,
@@ -332,7 +360,7 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
             if (lhs->type == N_CONSTANT_STRING || rhs->type == N_CONSTANT_STRING)
               die("Array \"%s\"(%s..%s): strings cannot be bounds",
                   var_name.c_str(), lhs->data.c_str(), rhs->data.c_str());
-            out += "array<" + lhs->data + "," + rhs->data;
+            out += "array<" + lhs->data + "," + rhs->data + ",";
             break;
           }
           case N_IDENTIFIER: {
@@ -353,9 +381,16 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
                   ordinal_type->data.c_str(), data.c_str());
             break;
           }
+          default:
+            die("Unexpected ordinal type %s in array declaration of %s",
+                type_to_str(ordinal_type->type).c_str(), var_name.c_str());
         }
-        if (ordinal_type == index_type_list->children.back())
-          out += of_type + ">";
+        if (ordinal_type == index_type_list->children.back()) {
+          std::string closings = "";
+          for (int i = 0; i < index_type_list->children.size(); i++)
+            closings += ">";
+          out += of_type + closings;
+        }
       }
       break;
     }

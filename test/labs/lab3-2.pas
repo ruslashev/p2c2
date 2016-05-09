@@ -1,6 +1,7 @@
 program lab3_prog2;
 const lmax = 20;
 var A: array[1..lmax, 1..lmax] of integer;
+    B: array[1..lmax] of array[1..lmax] of integer;
     i, j, n, t, nodd: integer;
 
 begin
