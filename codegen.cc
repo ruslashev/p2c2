@@ -44,6 +44,8 @@ static void write_block_constants(block *b);
 static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     std::string var_name, bool *allow_merged_decl);
+static std::string parse_record_section_list(ast_node *record_section_list,
+    block *b, std::string var_name);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
@@ -306,6 +308,8 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
         out = "bool";
       else if (simple_type == "char")
         out = "char";
+      else if (simple_type == "string")
+        out = "string";
       else {
         block *itb = b;
         ast_node *type_alias_data = nullptr;
@@ -401,6 +405,9 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
               } else if (simple_type == "real")
                 die("Array \"%s\": arrays cannot be indexed by real-type",
                     simple_type.c_str());
+              else if (simple_type == "string")
+                die("Array \"%s\": arrays cannot be indexed by string-type",
+                    simple_type.c_str());
               else if (simple_type == "boolean") {
                 out += "array<0,1,";
                 found = true;
@@ -438,8 +445,23 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       }
       break;
     }
-    case N_RECORD:
+    case N_RECORD: {
+      out += "struct { ";
+      if (type_denoter->children.size() == 2) {
+        out += parse_record_section_list(type_denoter->children[0], b,
+            var_name);
+        die("record \"%s\": variant records with an explicit tag field are not "
+            "supported in C", var_name.c_str());
+      } else {
+        if (type_denoter->children[0]->type == N_RECORD_SECTION_LIST) {
+          out += parse_record_section_list(type_denoter->children[0], b,
+              var_name);
+        } else
+          die("record \"%s\": variant records with an explicit tag field are "
+              "not supported in C", var_name.c_str());
+      }
       break;
+    }
     case N_SET:
       break;
     case N_FILE_TYPE:
@@ -450,6 +472,21 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       die("Syntax error: unhandled type \"%s\" in variable type",
           type_to_str(type_denoter->type).c_str());
   }
+  return out;
+}
+
+static std::string parse_record_section_list(ast_node *record_section_list,
+    block *b, std::string var_name)
+{
+  std::string out = "";
+  for (ast_node *list_with_type : record_section_list->children) {
+    out += type_denoter_to_str(list_with_type->children[0], b, var_name,
+        nullptr);
+    out += " ";
+    out += join(list_with_type->list, ", ");
+    out += "; ";
+  }
+  out += "}";
   return out;
 }
 

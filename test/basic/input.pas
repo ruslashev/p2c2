@@ -26,6 +26,7 @@ type
             theta: angle;
             year: 0..2000;
             name, firstname: string;
+			(*
             case shape of
               triangle :
                 (side : real ; inclination, angle1, angle2 : angle);
@@ -33,6 +34,7 @@ type
                 (side1, side2 : real; sadfj : angle);
               circle :
                 (diameter : real);
+				*)
           end;
   indextype = 1..lmax;
   masti = set of (club, diamond, heart, spade);
@@ -42,9 +44,11 @@ type
                     name, firstname: charsequence;
                     age : natural;
                     father, child, sibling : person;
+					(*
                     case married : Boolean of
                       true : (Gal : string);
                       false : ( );
+					  *)
                   end;
   whyyy = 1..lmax;
   whyy = whyyy;
