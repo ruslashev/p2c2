@@ -11,11 +11,14 @@ typedef float real;
 template <int l, int h>
 struct subrange {
   int v;
-  subrange() {} // TODO
   operator int() { return v; }
   subrange& operator=(const int nv) {
-    (nv >= l && nv <= h) ? (v = nv) :
-      printf("Error: subrange value %d is out of its bounds\n", v);
+    if (nv >= l && nv <= h)
+      v = nv;
+    else {
+      printf("Error: subrange value %d is out of its bounds\n", nv);
+      exit(1);
+    }
     return *this;
   }
 };
@@ -24,9 +27,12 @@ template <int l, int h, class T>
 struct array {
   T value[h - l + 1];
   T& operator[](const int i) {
-    return (i >= l && i <= h)
-      ? value[i - l]
-      : printf("Error: indexing array out of bounds (%d)\n", i);
+    if (i >= l && i <= h)
+      return value[i - l];
+    else {
+      printf("Error: indexing array out of bounds (%d)\n", i);
+      exit(1);
+    }
   }
 };
 
@@ -36,23 +42,24 @@ struct set {
   set() {
     size = 0;
   }
-  set(int h, int l) {
+  set(int l, int h) {
     if (h - l > 1024)
       size_error();
     size = h - l + 1;
     for (int w = 0, e = l; e <= h; w++, e++)
-      element[w] = e;
+      elements[w] = e;
   }
   friend const set operator+(set lhs, const set& rhs) {
     // union
     set result;
     if (lhs.size + rhs.size > 1024)
-      size_error();
+      result.size_error();
+    result.size = lhs.size + rhs.size;
     int w = 0, e;
-    for (e = lhs.lv; e <= lhs.hv; e++)
-      result.element[w++] = e;
-    for (e = rhs.lv; e <= rhs.hv; e++)
-      result.element[w++] = e;
+    for (e = 0; e < lhs.size; e++)
+      result.elements[w++] = lhs.elements[e];
+    for (e = 0; e < rhs.size; e++)
+      result.elements[w++] = rhs.elements[e];
     result.sort_and_uniq();
     return result;
   }
@@ -60,21 +67,15 @@ struct set {
     // difference
     set result;
     int w = 0;
-    for (int e = lhs.lv; e <= lhs.hv; e++) {
+    for (int e = 0; e < lhs.size; e++) {
       bool insert = true;
-      for (int o = rhs.lv; o <= rhs.hv; o++)
-        if (o == e)
+      for (int o = 0; o < rhs.size; o++)
+        if (rhs.elements[o] == lhs.elements[e])
           insert = false;
-      if (insert)
-        element[w++] = e;
-    }
-    for (int e = rhs.lv; e <= rhs.hv; e++) {
-      bool insert = true;
-      for (int o = lhs.lv; o <= lhs.hv; o++)
-        if (o == e)
-          insert = false;
-      if (insert)
-        element[w++] = e;
+      if (insert) {
+        result.elements[w++] = lhs.elements[e];
+        result.size++;
+      }
     }
     return result;
   }
@@ -82,13 +83,15 @@ struct set {
     // intersection
     set result;
     int w = 0;
-    for (int e = lhs.lv; e <= lhs.hv; e++) {
+    for (int e = 0; e < lhs.size; e++) {
       bool insert = false;
-      for (int o = rhs.lv; o <= rhs.hv; o++)
-        if (o == e)
+      for (int o = 0; o < rhs.size; o++)
+        if (rhs.elements[o] == lhs.elements[e])
           insert = true;
-      if (insert)
-        element[w++] = e;
+      if (insert) {
+        result.elements[w++] = lhs.elements[e];
+        result.size++;
+      }
     }
     return result;
   }
@@ -98,7 +101,7 @@ struct set {
     result = (lhs + rhs) - (lhs * rhs);
     return result;
   }
-  bool operator==(const set& lhs, const set& rhs) {
+  friend bool operator==(const set& lhs, const set& rhs) {
     bool equal = true;
     for (int i = 0; i < lhs.size; i++)
       if (lhs.elements[i] != rhs.elements[i]) {
@@ -107,21 +110,21 @@ struct set {
       }
     return equal;
   }
-  bool operator!=(const X& lhs, const X& rhs) {
+  friend bool operator!=(const set& lhs, const set& rhs) {
     return !(lhs == rhs);
   }
-  bool operator<=(const X& lhs, const X& rhs) {
+  friend bool operator<=(const set& lhs, const set& rhs) {
     // subset
     bool all_in = true;
     for (int i = 0; i < rhs.size && all_in; i++) {
       bool this_in = false;
       for (int j = 0; j < lhs.size && !this_in; j++)
-        if (lhs[j] == rhs[i])
+        if (lhs.elements[j] == rhs.elements[i])
           this_in = true;
       if (!this_in)
         all_in = false;
     }
-    return !all_in;
+    return all_in;
   }
   void include(int element) {
     if (size == 1024)
@@ -130,9 +133,11 @@ struct set {
     sort_and_uniq();
   }
   void exclude(int element) {
-    for (int w = 0, i = 0; i < size; i++)
+    int w = 0, i = 0;
+    for (; i < size; i++)
       if (element != elements[i])
         elements[w++] = elements[i];
+    size = w;
   }
   bool in(int element) {
     for (int i = 0; i < size; i++)
@@ -140,33 +145,29 @@ struct set {
         return true;
     return false;
   }
+  void print() {
+    for (int i = 0; i < size; i++)
+      printf("%d ", elements[i]);
+    printf("\n");
+  }
   void sort_and_uniq() {
-    puts("before:");
-    for (int i = 0; i < size; i++)
-      printf("%d ", elements[i]);
-    printf("\n");
-    for (int i = 1; i < size; i++) {
-      for (int j = i - 1; j >= 0 && a[j] > a[i]; j--)
-        a[j + 1] = a[j];
-      a[j + 1] = a[i];
+    int j, value;
+    for (int i = 1 ; i < size ; i++) {
+        value = elements[i];
+        for (j = i - 1; j >= 0 && elements[j] > value; j--)
+            elements[j + 1] = elements[j];
+        elements[j + 1] = value;
     }
-    puts("after:");
-    for (int i = 0; i < size; i++)
-      printf("%d ", elements[i]);
-    printf("\n");
-    int w = 0;
-    for (int i = 0; i < size - 1; i++) {
+    int w = 1;
+    for (int i = 1; i < size; i++) {
       bool keep = true;
-      for (int j = i + 1; j < size; j++)
+      for (int j = i - 1; j >= 0; j--)
         if (elements[j] == elements[i])
           keep = false;
       if (keep)
         elements[w++] = elements[i];
     }
-    puts("uniq:");
-    for (int i = 0; i < size; i++)
-      printf("%d ", elements[i]);
-    printf("\n");
+    size = w;
   }
   void size_error() {
     puts("maximum size of sets is 1024 elements");
