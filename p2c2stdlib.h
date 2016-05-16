@@ -180,7 +180,7 @@ struct string
   char* data;
   size_t length;
   string() {
-    data = nullptr;
+    data = 0;
   }
   ~string() {
     delete [] data;
@@ -190,7 +190,11 @@ struct string
     data = new char[length + 1];
     strncpy(data, str, length);
   }
-  string(const string& str) : string(str.data) { }
+  string(const string& str) {
+    length = strlen(str.data);
+    data = new char[length + 1];
+    strncpy(data, str.data, length);
+  }
   void swap(string& other) {
     std::swap(other.data, data);
   }
@@ -215,6 +219,12 @@ struct string
     strcpy(result.data, lhs.data);
     strcat(result.data, rhs.data);
     return result;
+  }
+  friend bool operator==(const string& lhs, const string& rhs) {
+    return (strcmp(lhs.data, rhs.data) == 0);
+  }
+  friend bool operator!=(const string& lhs, const string& rhs) {
+    return !(lhs == rhs);
   }
   char* c_str() {
     return data;

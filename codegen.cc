@@ -32,6 +32,7 @@ struct block {
   std::vector<std::pair<std::vector<std::string>, ast_node*>> var_decls;
   std::vector<func_decl> func_decls;
   std::vector<ast_node*> statements;
+  std::vector<std::tuple<std::string, int, int>> init_sets;
   block *prev;
   block() : prev(nullptr) {};
 };
@@ -44,8 +45,6 @@ static void write_block_constants(block *b);
 static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     std::string var_name, bool *allow_merged_decl);
-static std::string parse_record_section_list(ast_node *record_section_list,
-    block *b, std::string var_name);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
@@ -206,43 +205,12 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
 static void write_block(block *b, bool root)
 {
   if (root) {
+    /*
     writeln("#include <stdio.h>");
     writeln("#include <limits.h>");
-    /*
-    writeln("");
-    writeln("#define maxint INT_MAX");
-    writeln("#define minint INT_MIN");
-    writeln("");
-    writeln("#ifdef __cplusplus");
-    writeln("template <int l, int h>");
-    writeln("struct subrange {");
-    writeln("  int v;");
-    writeln("  subrange() {}"); // TODO
-    writeln("  operator int() { return v; }");
-    writeln("  subrange& operator=(const int nv) {");
-    writeln("    (nv >= l && nv <= h) ? (v = nv) :");
-    write  ("      printf(\"Error: subrange value %%d is out of ");
-    writeln("its bounds\\n\", v);");
-    writeln("    return *this;");
-    writeln("  }");
-    writeln("};");
-    writeln("");
-    writeln("template <int l, int h, class T>");
-    writeln("struct array {");
-    writeln("  T value[h - l + 1];");
-    writeln("  T& operator[](const int i) {");
-    writeln("    return (i >= l && i <= h)");
-    writeln("      ? value[i - l] ");
-    write  ("      : printf(\"Error: indexing array out of bounds ");
-    writeln("(%%d)\\n\", i);");
-    writeln("  }");
-    writeln("};");
-    writeln("#endif");
-    writeln("");
-    writeln("typedef float real;");
+    writeln("#include \"p2c2stdlib.h\"");
     writeln("");
     */
-    writeln("");
 
     write_block_constants(b);
     write_block_variables(b);
@@ -283,8 +251,20 @@ static void write_block_variables(block *b)
     bool allow_merged_decl;
     std::string type_denoter_str = type_denoter_to_str(type_denoter, b,
         names[0], &allow_merged_decl);
-    if (allow_merged_decl) {
-      writeln("%s %s;", type_denoter_str.c_str(), join(names, ", ").c_str());
+    write("%s ", type_denoter_str.c_str());
+    if (allow_merged_decl)
+      writeln("%s;", join(names, ", ").c_str());
+    else {
+      std::string pointers = "";
+      for (size_t i = 0; i < names.size() - 1; i++) {
+        pointers += "*";
+        pointers += names[i];
+        pointers += ", ";
+      }
+      pointers += "*";
+      pointers += names[names.size() - 1];
+      pointers += ";";
+      writeln("%s", pointers.c_str());
     }
   }
   if (b->var_decls.size())
@@ -299,6 +279,7 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     *allow_merged_decl = true;
   switch (type_denoter->type) {
     case N_IDENTIFIER: {
+      printf("we go now %s\n", type_denoter->data.c_str());
       std::string simple_type = to_lower(type_denoter->data);
       if (simple_type == "integer")
         out = "int";
@@ -447,15 +428,19 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     }
     case N_RECORD: {
       out += "struct { ";
-      if (type_denoter->children.size() == 2) {
-        out += parse_record_section_list(type_denoter->children[0], b,
-            var_name);
+      if (type_denoter->children.size() == 2)
         die("record \"%s\": variant records with an explicit tag field are not "
             "supported in C", var_name.c_str());
-      } else {
+      else {
         if (type_denoter->children[0]->type == N_RECORD_SECTION_LIST) {
-          out += parse_record_section_list(type_denoter->children[0], b,
-              var_name);
+          for (ast_node *list_with_type : type_denoter->children[0]->children) {
+            out += type_denoter_to_str(list_with_type->children[0], b, var_name,
+                nullptr);
+            out += " ";
+            out += join(list_with_type->list, ", ");
+            out += "; ";
+          }
+          out += "}";
         } else
           die("record \"%s\": variant records with an explicit tag field are "
               "not supported in C", var_name.c_str());
@@ -463,30 +448,26 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       break;
     }
     case N_SET:
-      break;
+      out += "set";
     case N_FILE_TYPE:
+      if (allow_merged_decl)
+        *allow_merged_decl = false;
+      out += "FILE";
       break;
-    case N_POINTER_TYPE:
+    case N_POINTER_TYPE: {
+      if (allow_merged_decl)
+        *allow_merged_decl = false;
+      ast_node alias;
+      alias.type = N_IDENTIFIER;
+      alias.data = type_denoter->data;
+      puts("ok lets og");
+      out += type_denoter_to_str(&alias, b, var_name, nullptr);
       break;
+    }
     default:
       die("Syntax error: unhandled type \"%s\" in variable type",
           type_to_str(type_denoter->type).c_str());
   }
-  return out;
-}
-
-static std::string parse_record_section_list(ast_node *record_section_list,
-    block *b, std::string var_name)
-{
-  std::string out = "";
-  for (ast_node *list_with_type : record_section_list->children) {
-    out += type_denoter_to_str(list_with_type->children[0], b, var_name,
-        nullptr);
-    out += " ";
-    out += join(list_with_type->list, ", ");
-    out += "; ";
-  }
-  out += "}";
   return out;
 }
 
