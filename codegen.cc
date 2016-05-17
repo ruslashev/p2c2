@@ -12,6 +12,7 @@ struct formal_parameter {
   bool var;
   ast_node *function_formal_parameters;
   std::string function_returns;
+  bool function;
 };
 
 struct block;
@@ -47,6 +48,7 @@ static void write_block_constants(block *b);
 static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     std::string var_name, bool *allow_merged_decl, bool full_decl);
+static void write_block_functions(block *b);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
@@ -174,6 +176,7 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
           p.name = s;
           p.type = formal_parameter_node->children[0];
           p.var = (formal_parameter_node->data == "var");
+          p.function = false;
           decl->formal_parameters.push_back(p);
         }
         break;
@@ -185,6 +188,7 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
         if (formal_parameter_node->children.size())
           p.function_formal_parameters = formal_parameter_node->children[0];
         p.function_returns = "";
+        p.function = true;
         decl->formal_parameters.push_back(p);
         break;
       }
@@ -195,6 +199,7 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
         if (formal_parameter_node->children.size())
           p.function_formal_parameters = formal_parameter_node->children[0];
         p.function_returns = formal_parameter_node->list[1];
+        p.function = true;
         decl->formal_parameters.push_back(p);
         break;
       }
@@ -213,6 +218,7 @@ static void write_block(block *b, bool root)
     */
     write_block_constants(b);
     write_block_variables(b);
+    write_block_functions(b);
   }
 }
 
@@ -261,10 +267,8 @@ static void write_block_variables(block *b)
       writeln("%s", pointers.c_str());
     }
   }
-  if (b->var_decls.size()) {
+  if (b->var_decls.size())
     writeln("");
-    // TODO init sets
-  }
 }
 
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
@@ -275,7 +279,6 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     *allow_merged_decl = true;
   switch (type_denoter->type) {
     case N_IDENTIFIER: {
-      printf("we go now %s\n", type_denoter->data.c_str());
       std::string simple_type = to_lower(type_denoter->data);
       if (simple_type == "integer")
         out = "int";
@@ -307,10 +310,8 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     case N_ENUMERATION: {
       bool this_enum_defined = false;
       size_t i;
-      puts("wtf");
       for (i = 0; i < b->enums.size() && !this_enum_defined; i++) {
         std::vector<std::string> itenum = b->enums[i];
-        printf("iterating enums: %s\n", join(itenum, ", ").c_str());
         if (itenum == type_denoter->list)
           this_enum_defined = true;
       }
@@ -318,7 +319,6 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
         out += "en" + std::to_string(i);
       else {
         std::string this_enum_name = "en" + std::to_string(b->enums.size() + 1);
-        printf("ok go %s\n", this_enum_name.c_str());
         if (full_decl) {
           b->enums.push_back(type_denoter->list);
           out += "enum " + this_enum_name + " { ";
@@ -560,7 +560,6 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       ast_node alias;
       alias.type = N_IDENTIFIER;
       alias.data = type_denoter->data;
-      puts("ok lets og");
       out += type_denoter_to_str(&alias, b, var_name, nullptr, full_decl);
       break;
     }
@@ -569,6 +568,45 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
           type_to_str(type_denoter->type).c_str());
   }
   return out;
+}
+
+static void write_block_functions(block *b)
+{
+  for (func_decl &decl : b->func_decls) {
+    std::string returns = decl.returns;
+    if (!decl.returns.size())
+      returns = "void";
+    write("%s %s(", returns.c_str(), decl.name.c_str());
+    for (size_t i = 0; i < decl.formal_parameters.size(); i++) {
+      formal_parameter fp = decl.formal_parameters[i];
+      std::string parameter_str = "";
+      if (!fp.function) {
+        parameter_str = type_denoter_to_str(fp.type, b, decl.name, nullptr,
+            false) + " ";
+        if (fp.var)
+          parameter_str += "&";
+        parameter_str += fp.name;
+        if (i != decl.formal_parameters.size() - 1)
+          parameter_str += ", ";
+      } else {
+        die("Not implemented: functional formal parameters");
+        ast_node returns;
+        returns.type = N_IDENTIFIER;
+        returns.data = fp.function_returns;
+        parameter_str = type_denoter_to_str(&returns, b, decl.name, nullptr,
+            false);
+        parameter_str += " (*" + fp.name + ")";
+      }
+    }
+    write(")");
+    if (decl.forward)
+      writeln(";");
+    else {
+      writeln(" {");
+      write_block(decl.body, false);
+      writeln("}");
+    }
+  }
 }
 
 static void write(const char *format, ...)
