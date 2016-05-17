@@ -263,7 +263,7 @@ static void write_block_variables(block *b)
   }
   if (b->var_decls.size()) {
     writeln("");
-    // TODO init enums, records and sets
+    // TODO init sets
   }
 }
 
@@ -305,21 +305,35 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       break;
     }
     case N_ENUMERATION: {
-      std::string this_enum_name = "en" + std::to_string(b->enums.size() + 1);
-      if (full_decl) {
-        b->enums.push_back(type_denoter->list);
-        out += "enum " + this_enum_name + " { ";
-        for (size_t i = 0; i < type_denoter->list.size() - 1; i++) {
-          out += type_denoter->list[i];
-          if (i == 0)
-            out += " = " + std::to_string(i) + "; ";
-          out += "; ";
+      bool this_enum_defined = false;
+      size_t i;
+      puts("wtf");
+      for (i = 0; i < b->enums.size() && !this_enum_defined; i++) {
+        std::vector<std::string> itenum = b->enums[i];
+        printf("iterating enums: %s\n", join(itenum, ", ").c_str());
+        if (itenum == type_denoter->list)
+          this_enum_defined = true;
+      }
+      if (this_enum_defined)
+        out += "en" + std::to_string(i);
+      else {
+        std::string this_enum_name = "en" + std::to_string(b->enums.size() + 1);
+        printf("ok go %s\n", this_enum_name.c_str());
+        if (full_decl) {
+          b->enums.push_back(type_denoter->list);
+          out += "enum " + this_enum_name + " { ";
+          for (size_t i = 0; i < type_denoter->list.size() - 1; i++) {
+            out += type_denoter->list[i];
+            if (i == 0)
+              out += " = " + std::to_string(i) + "; ";
+            out += "; ";
+          }
+          out += type_denoter->list[type_denoter->list.size() - 1];
+          // out += " = " + std::to_string(type_denoter->list.size() - 1);
+          out += " }";
+        } else {
+          out += this_enum_name;
         }
-        out += type_denoter->list[type_denoter->list.size() - 1];
-        // out += " = " + std::to_string(type_denoter->list.size() - 1);
-        out += " }";
-      } else {
-        out += this_enum_name;
       }
       break;
     }
