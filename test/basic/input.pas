@@ -20,7 +20,7 @@ type
   size = 1..20;
   send = array [Boolean] of array [1..10] of array [size] of real;
   help = packed array [Boolean] of array [1..10, size] of real;
-  charsequence = file of char;
+  charsequence = string;
   polar = record
             r : real;
             theta: angle;
@@ -56,6 +56,7 @@ type
 FileOfInteger = file of integer;
 
 var
+	(*
 	wat : natural;
 	test : count;
 	yuo : angle;
@@ -76,9 +77,10 @@ var
 	idx : indextype;
 	dude : masti;
 	depedns : vector;
+	*)
 	gyu : person;
-	bio : persondetails;
-	f : fileofinteger;
+	// bio : persondetails;
+	// f : fileofinteger;
 
 begin
 	writeln('asdf');

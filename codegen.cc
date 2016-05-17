@@ -33,6 +33,8 @@ struct block {
   std::vector<func_decl> func_decls;
   std::vector<ast_node*> statements;
   std::vector<std::tuple<std::string, int, int>> init_sets;
+  std::vector<std::vector<std::string>> enums;
+  std::vector<std::vector<ast_node*>> records;
   block *prev;
   block() : prev(nullptr) {};
 };
@@ -44,7 +46,7 @@ static void write_block(block *b, bool root);
 static void write_block_constants(block *b);
 static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
-    std::string var_name, bool *allow_merged_decl);
+    std::string var_name, bool *allow_merged_decl, bool full_decl);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
@@ -206,12 +208,9 @@ static void write_block(block *b, bool root)
 {
   if (root) {
     /*
-    writeln("#include <stdio.h>");
-    writeln("#include <limits.h>");
     writeln("#include \"p2c2stdlib.h\"");
     writeln("");
     */
-
     write_block_constants(b);
     write_block_variables(b);
   }
@@ -250,29 +249,26 @@ static void write_block_variables(block *b)
     ast_node *type_denoter = var_decl.second;
     bool allow_merged_decl;
     std::string type_denoter_str = type_denoter_to_str(type_denoter, b,
-        names[0], &allow_merged_decl);
+        names[0], &allow_merged_decl, true);
     write("%s ", type_denoter_str.c_str());
     if (allow_merged_decl)
       writeln("%s;", join(names, ", ").c_str());
     else {
       std::string pointers = "";
-      for (size_t i = 0; i < names.size() - 1; i++) {
-        pointers += "*";
-        pointers += names[i];
-        pointers += ", ";
-      }
-      pointers += "*";
-      pointers += names[names.size() - 1];
-      pointers += ";";
+      for (size_t i = 0; i < names.size() - 1; i++)
+        pointers += "*" + names[i] + ", ";
+      pointers += "*" + names[names.size() - 1] + ";";
       writeln("%s", pointers.c_str());
     }
   }
-  if (b->var_decls.size())
+  if (b->var_decls.size()) {
     writeln("");
+    // TODO init enums, records and sets
+  }
 }
 
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
-    std::string var_name, bool *allow_merged_decl)
+    std::string var_name, bool *allow_merged_decl, bool full_decl)
 {
   std::string out = "";
   if (allow_merged_decl)
@@ -303,19 +299,28 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
         if (type_alias_data == nullptr)
           die("Syntax error: unknown type \"%s\" in variable declaration "
               "of \"%s\"", type_denoter->data.c_str(), var_name.c_str());
-        out = type_denoter_to_str(type_alias_data, b, var_name, nullptr);
+        out = type_denoter_to_str(type_alias_data, b, var_name,
+            allow_merged_decl, full_decl);
       }
       break;
     }
     case N_ENUMERATION: {
-      out += "enum { ";
-      for (size_t i = 0; i < type_denoter->list.size() - 1; i++) {
-        out += type_denoter->list[i];
-        out += " = " + std::to_string(i) + "; ";
+      std::string this_enum_name = "en" + std::to_string(b->enums.size() + 1);
+      if (full_decl) {
+        b->enums.push_back(type_denoter->list);
+        out += "enum " + this_enum_name + " { ";
+        for (size_t i = 0; i < type_denoter->list.size() - 1; i++) {
+          out += type_denoter->list[i];
+          if (i == 0)
+            out += " = " + std::to_string(i) + "; ";
+          out += "; ";
+        }
+        out += type_denoter->list[type_denoter->list.size() - 1];
+        // out += " = " + std::to_string(type_denoter->list.size() - 1);
+        out += " }";
+      } else {
+        out += this_enum_name;
       }
-      out += type_denoter->list[type_denoter->list.size() - 1];
-      out += " = " + std::to_string(type_denoter->list.size() - 1);
-      out += " }";
       break;
     }
     case N_SUBRANGE: {
@@ -345,14 +350,15 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       ast_node *index_type_list = type_denoter->children[0],
         *array_type_denoter = type_denoter->children[1];
       std::string of_type = type_denoter_to_str(array_type_denoter, b,
-          var_name, nullptr);
+          var_name, nullptr, full_decl);
       for (ast_node *ordinal_type : index_type_list->children) {
         bool found = false;
         ast_node *it_type = ordinal_type;
         while (!found) {
           switch (it_type->type) {
             case N_ENUMERATION: {
-              out += "array<" + it_type->list[0] + "," + it_type->list.back() + ",";
+              out += "array<" + it_type->list[0] + "," + it_type->list.back() +
+                ",";
               found = true;
               break;
             }
@@ -427,32 +433,112 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       break;
     }
     case N_RECORD: {
-      out += "struct { ";
       if (type_denoter->children.size() == 2)
         die("record \"%s\": variant records with an explicit tag field are not "
             "supported in C", var_name.c_str());
       else {
-        if (type_denoter->children[0]->type == N_RECORD_SECTION_LIST) {
-          for (ast_node *list_with_type : type_denoter->children[0]->children) {
-            out += type_denoter_to_str(list_with_type->children[0], b, var_name,
-                nullptr);
-            out += " ";
-            out += join(list_with_type->list, ", ");
-            out += "; ";
-          }
-          out += "}";
-        } else
-          die("record \"%s\": variant records with an explicit tag field are "
-              "not supported in C", var_name.c_str());
+        bool this_record_defined = false;
+        size_t i;
+        for (i = 0; i < b->records.size() && !this_record_defined; i++) {
+          std::vector<ast_node*> record = b->records[i];
+          if (record == type_denoter->children[0]->children)
+            this_record_defined = true;
+        }
+        if (this_record_defined)
+          out += "rec" + std::to_string(i);
+        else {
+          std::string this_record_name = "rec" + std::to_string(
+              b->records.size() + 1);
+          if (full_decl) {
+            out += "struct " + this_record_name + " { ";
+            if (type_denoter->children[0]->type == N_RECORD_VARIANT_PART)
+              die("record \"%s\": variant records with an explicit tag field "
+                  "are not supported in C", var_name.c_str());
+            b->records.push_back(type_denoter->children[0]->children);
+            for (ast_node *list_with_type :
+                type_denoter->children[0]->children) {
+              bool str_allow_merged_decl;
+              out += type_denoter_to_str(list_with_type->children[0], b,
+                  var_name, &str_allow_merged_decl, false);
+              out += " ";
+              if (str_allow_merged_decl)
+                out += join(list_with_type->list, ", ");
+              else {
+                for (size_t i = 0; i < list_with_type->list.size() - 1; i++)
+                  out += "*" + list_with_type->list[i] + ", ";
+                out += "*" + list_with_type->list[list_with_type->list.size()
+                  - 1];
+              }
+              out += "; ";
+            }
+            out += "}";
+          } else
+            out += this_record_name;
+        }
       }
       break;
     }
-    case N_SET:
-      out += "set";
+    case N_SET: {
+      if (full_decl) {
+        out += "set(";
+        ast_node *of_type = type_denoter->children[0];
+        bool found = false;
+        while (!found) {
+          switch (of_type->type) {
+            case N_ENUMERATION:
+              out += type_denoter->children[0]->list[0] + "," +
+                type_denoter->children[0]->list.back() + ")";
+              found = true;
+              break;
+            case N_SUBRANGE: {
+              ast_node *lhs = of_type->children[0], *rhs = of_type->children[1];
+              if (lhs->type == N_CONSTANT)
+                out += lhs->data + ",";
+              else if (lhs->type == N_CONSTANT_STRING && lhs->data.size() == 1)
+                out += "'" + lhs->data + "',";
+              else
+                die("Set \"%s\" left limit (>\"%s\"<..\"%s\"): strings "
+                    "cannot be bounds", var_name.c_str(), lhs->data.c_str(),
+                    rhs->data.c_str());
+              if (rhs->type == N_CONSTANT)
+                out += rhs->data + ",";
+              else if (rhs->type == N_CONSTANT_STRING && rhs->data.size() == 1)
+                out += "'" + rhs->data + "',";
+              else
+                die("Set \"%s\" right limit (\"%s\"..>\"%s\"<): strings "
+                    "cannot be bounds", var_name.c_str(), lhs->data.c_str(),
+                    rhs->data.c_str());
+              found = true;
+              break;
+            }
+            case N_IDENTIFIER: {
+              std::string simple_type = to_lower(of_type->data);
+              block *itb = b;
+              ast_node *type_alias_data = nullptr;
+              while (itb != nullptr && type_alias_data == nullptr) {
+                if (itb->type_defs.count(simple_type))
+                  type_alias_data = itb->type_defs[simple_type];
+                else
+                  itb = b->prev;
+              }
+              if (type_alias_data == nullptr)
+                die("Syntax error: unknown type \"%s\" in index type "
+                    "declaration of set \"%s\"", of_type->data.c_str(),
+                    var_name.c_str());
+              of_type = type_alias_data;
+              break;
+            }
+            default:
+              break;
+          }
+        }
+      } else
+        out += "set";
+      break;
+    }
     case N_FILE_TYPE:
-      if (allow_merged_decl)
-        *allow_merged_decl = false;
-      out += "FILE";
+      die("Variable declaration of \"%s\": Typed File-type variables are not "
+          "supported in C", var_name.c_str());
       break;
     case N_POINTER_TYPE: {
       if (allow_merged_decl)
@@ -461,7 +547,7 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
       alias.type = N_IDENTIFIER;
       alias.data = type_denoter->data;
       puts("ok lets og");
-      out += type_denoter_to_str(&alias, b, var_name, nullptr);
+      out += type_denoter_to_str(&alias, b, var_name, nullptr, full_decl);
       break;
     }
     default:
