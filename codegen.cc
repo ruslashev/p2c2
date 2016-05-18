@@ -814,7 +814,6 @@ static std::string parse_expression(ast_node *expression)
 {
   std::string out = "";
   if (expression->children.size() == 3) {
-    puts("ye expre 3");
     out += parse_simple_expression(expression->children[0]);
     switch (expression->children[1]->type) {
       case N_EQUAL:
@@ -844,7 +843,6 @@ static std::string parse_expression(ast_node *expression)
     }
     out += parse_simple_expression(expression->children[2]);
   } else {
-    puts("o expr 1");
     out += parse_simple_expression(expression->children[0]);
   }
   return out;
@@ -976,10 +974,20 @@ static std::string parse_function_designator(ast_node *function_designator)
   out += function_designator->data + "(";
   for (size_t i = 0; i < function_designator->children[0]->children.size();
       i++) {
-    ast_node *actual_parameter =
-      function_designator->children[0]->children[i];
-    // if (actual_parameter->children.size() == 1)
-    out += parse_expression(actual_parameter->children[0]);
+    ast_node *actual_parameter = function_designator->children[0]->children[i];
+    if (function_designator->data == "write" || function_designator->data ==
+        "writeln") {
+      if (actual_parameter->children.size() == 1)
+        out += parse_expression(actual_parameter->children[0]);
+      else if (actual_parameter->children.size() == 2)
+        out += "width_format(" + parse_expression(actual_parameter->children[0])
+          + ", " + parse_expression(actual_parameter->children[1]) + ")";
+      else if (actual_parameter->children.size() == 3)
+        out += "full_format(" + parse_expression(actual_parameter->children[0])
+          + ", " + parse_expression(actual_parameter->children[1])
+          + ", " + parse_expression(actual_parameter->children[2]) + ")";
+    } else
+      out += parse_expression(actual_parameter->children[0]);
     if (i != function_designator->children[0]->children.size() - 1)
       out += ", ";
   }

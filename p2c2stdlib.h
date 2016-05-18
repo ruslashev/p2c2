@@ -1,8 +1,10 @@
 #include <limits.h>
+#include <math.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #define maxint INT_MAX
 #define minint INT_MIN
@@ -265,5 +267,59 @@ double ln(double x) {
 
 double arctan(double x) {
   return atan(x);
+}
+
+double trunc(double x) {
+  return floor(x);
+}
+
+int ord(char x) {
+  return x;
+}
+
+char chr(int x) {
+  return x;
+}
+
+int succ(int x) {
+  return x + 1;
+}
+
+bool odd(int x) {
+  return (abs(x) % 2) == 1;
+}
+
+#define eof (feof(stdin))
+
+void write(int n, ...) {
+  va_list args;
+  va_start(args, n);
+  for (int i = 0; i < n; i++)
+    printf("%s", va_arg(args, char*));
+  va_end(args);
+}
+
+void writeln(int n, ...) {
+  va_list args;
+  va_start(args, n);
+  for (int i = 0; i < n; i++)
+    printf("%s", va_arg(args, char*));
+  va_end(args);
+  printf("\n");
+}
+
+char* width_format(double x, int w) {
+  char b[256];
+  if (fabs(x - floor(x)) < 0.0001)
+    sprintf(b, "%*d", w, (int)x);
+  else
+    sprintf(b, "%*f", w, x);
+  return strdup(b);
+}
+
+char* full_format(double x, int w, int p) {
+  char b[256];
+  sprintf(b, "%*.*f", w, p, x);
+  return strdup(b);
 }
 
