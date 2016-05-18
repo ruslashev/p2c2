@@ -1,6 +1,7 @@
 #include "codegen.hh"
 #include "utils.hh"
 #include "ast.hh"
+#include <cstring>
 #include <cstdarg>
 #include <map>
 #include <memory>
@@ -48,12 +49,14 @@ static void write_block_constants(block *b);
 static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     std::string var_name, bool *allow_merged_decl, bool full_decl);
-static void write_block_functions(block *b);
+static void write_block_functions(block *b, bool root);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
 static std::string *output_ptr;
 static std::vector<block*> allocated_bodies;
+static int indent = 0;
+static bool line_start = true;
 
 void generate_code(ast_node *root, std::string *output)
 {
@@ -216,10 +219,10 @@ static void write_block(block *b, bool root)
     writeln("#include \"p2c2stdlib.h\"");
     writeln("");
     */
+  }
     write_block_constants(b);
     write_block_variables(b);
-    write_block_functions(b);
-  }
+    write_block_functions(b, root);
 }
 
 static void write_block_constants(block *b)
@@ -570,25 +573,25 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
   return out;
 }
 
-static void write_block_functions(block *b)
+static void write_block_functions(block *b, bool root)
 {
+  if (b->func_decls.size() && !root)
+    die("Function definitions inside functions are not supported in C");
   for (func_decl &decl : b->func_decls) {
     std::string returns = decl.returns;
     if (!decl.returns.size())
       returns = "void";
+    else {
+      ast_node returns_ln;
+      returns_ln.type = N_IDENTIFIER;
+      returns_ln.data = returns;
+      returns = type_denoter_to_str(&returns_ln, b, decl.name, nullptr, false);
+    }
     write("%s %s(", returns.c_str(), decl.name.c_str());
     for (size_t i = 0; i < decl.formal_parameters.size(); i++) {
       formal_parameter fp = decl.formal_parameters[i];
       std::string parameter_str = "";
-      if (!fp.function) {
-        parameter_str = type_denoter_to_str(fp.type, b, decl.name, nullptr,
-            false) + " ";
-        if (fp.var)
-          parameter_str += "&";
-        parameter_str += fp.name;
-        if (i != decl.formal_parameters.size() - 1)
-          parameter_str += ", ";
-      } else {
+      if (fp.function) {
         die("Not implemented: functional formal parameters");
         ast_node returns;
         returns.type = N_IDENTIFIER;
@@ -597,13 +600,23 @@ static void write_block_functions(block *b)
             false);
         parameter_str += " (*" + fp.name + ")";
       }
+      parameter_str = type_denoter_to_str(fp.type, b, decl.name, nullptr,
+          false) + " ";
+      if (fp.var)
+        parameter_str += "&";
+      parameter_str += fp.name;
+      if (i != decl.formal_parameters.size() - 1)
+        parameter_str += ", ";
+      write("%s", parameter_str.c_str());
     }
     write(")");
     if (decl.forward)
       writeln(";");
     else {
       writeln(" {");
+      indent++;
       write_block(decl.body, false);
+      indent--;
       writeln("}");
     }
   }
@@ -618,7 +631,10 @@ static void write(const char *format, ...)
   if (wr < 0 || wr >= 1024)
     die("failed to write string");
   va_end(args);
+  if (line_start)
+    output_ptr->append(std::string(indent * 2, ' '));
   output_ptr->append(linebuffer);
+  line_start = false;
 }
 
 static void writeln(const char *format, ...)
@@ -630,8 +646,13 @@ static void writeln(const char *format, ...)
   if (wr < 0 || wr >= 1024)
     die("failed to write string");
   va_end(args);
+  if (strcmp(linebuffer, "") == 0)
+    line_start = false;
+  if (line_start)
+    output_ptr->append(std::string(indent * 2, ' '));
   output_ptr->append(linebuffer);
   extern std::string line_ending;
   output_ptr->append(line_ending);
+  line_start = true;
 }
 
