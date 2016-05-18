@@ -480,27 +480,23 @@ factor: variable_access
       | NIL { $$ = make_node(N_UNSIGNED_CONSTANT_NIL); }
       | function_designator
       {
-        $$ = make_node(N_FACTOR);
+        $$ = make_node(N_FACTOR_FUNC_DESIGNATOR);
         $$->add_child($1);
       }
       | set_constructor
       {
-        $$ = make_node(N_FACTOR);
+        $$ = make_node(N_FACTOR_SET_CONS);
         $$->add_child($1);
       }
       | LPAREN expression RPAREN
       {
-        $$ = make_node(N_FACTOR);
-        ast_node *expr_in_parens = make_node(N_PARENS_EXPRESSION);
-        expr_in_parens->add_child($2);
-        $$->add_child(expr_in_parens);
+        $$ = make_node(N_FACTOR_PARENS_EXPRESSION);
+        $$->add_child($2);
       }
       | NOT factor
       {
-        $$ = make_node(N_FACTOR);
-        ast_node *not_factor = make_node(N_NOT_FACTOR);
-        not_factor->add_child($2);
-        $$->add_child(not_factor);
+        $$ = make_node(N_FACTOR_NOT_FACTOR);
+        $$->add_child($2);
       };
 variable_access: identifier
                {

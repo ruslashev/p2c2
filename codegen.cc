@@ -50,6 +50,14 @@ static void write_block_variables(block *b);
 static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     std::string var_name, bool *allow_merged_decl, bool full_decl);
 static void write_block_functions(block *b, bool root);
+static void write_block_statements(block *b);
+static std::string parse_variable_access(ast_node *va);
+static std::string parse_expression(ast_node *expression);
+static std::string parse_simple_expression(ast_node *simple_expression);
+static std::string parse_term_list(ast_node *term_list);
+static std::string parse_factor_list(ast_node *factor_list);
+static std::string parse_factor_or_mult_operator(ast_node
+    *factor_or_multiplying_operator);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
@@ -223,6 +231,7 @@ static void write_block(block *b, bool root)
     write_block_constants(b);
     write_block_variables(b);
     write_block_functions(b, root);
+    write_block_statements(b);
 }
 
 static void write_block_constants(block *b)
@@ -620,6 +629,253 @@ static void write_block_functions(block *b, bool root)
       writeln("}");
     }
   }
+}
+
+static void write_block_statements(block *b)
+{
+  for (ast_node *statement : b->statements) {
+    std::string label = statement->data;
+    if (label.size()) {
+      bool found = false;
+      for (std::string &vl : b->valid_labels)
+        if (vl == label)
+          found = true;
+      if (!found)
+        die("Undeclared label %s", label.c_str());
+      writeln("%s:", label.c_str());
+    }
+    switch (statement->type) {
+      case N_EMPTY_STATEMENT:
+        break;
+      case N_ASSIGNMENT_STATEMENT: {
+        ast_node *va = statement->children[0], *rhs = statement->children[1];
+        std::string out = "";
+        out += parse_variable_access(va);
+        break;
+      }
+      case N_PROC_OR_FUNC_STATEMENT: {
+        break;
+      }
+      case N_PROC_FUNC_OR_VARIABLE: {
+        break;
+      }
+      case N_GOTO: {
+        break;
+      }
+      case N_STATEMENT_PART: {
+        break;
+      }
+      case N_IF: {
+        break;
+      }
+      case N_CASE: {
+        break;
+      }
+      case N_REPEAT: {
+        break;
+      }
+      case N_WHILE: {
+        break;
+      }
+      case N_FOR_TO: {
+        break;
+      }
+      case N_FOR_DOWNTO: {
+        break;
+      }
+      case N_WITH: {
+        break;
+      }
+    }
+  }
+}
+
+static std::string parse_variable_access(ast_node *va)
+{
+  std::string out = "";
+  switch (va->type) {
+    case N_VARIABLE_ACCESS_SIMPLE:
+      out += va->data;
+      break;
+    case N_VARIABLE_ACCESS_ARRAY_ACCESS: {
+      ast_node *index_expression_list = va->children[1];
+      for (size_t i = 0; i < index_expression_list->children.size();
+          i++) {
+        ast_node *expression = index_expression_list->children[i];
+        std::string idxel = "[" + parse_expression(expression) + "]";
+      }
+      break;
+    }
+    case N_VARIABLE_ACCESS_FIELD_DESIGNATOR:
+      break;
+    case N_VARIABLE_ACCESS_BUFFER_VARIABLE:
+      break;
+  }
+
+  return out;
+}
+
+static std::string parse_expression(ast_node *expression)
+{
+  std::string out = "";
+  if (expression->children.size() == 3) {
+    out += parse_simple_expression(expression->children[0]);
+    switch (expression->children[1]->type) {
+      case N_EQUAL:
+        out += " == ";
+        break;
+      case N_LTGT:
+        out += " != ";
+        break;
+      case N_LT:
+        out += " < ";
+        break;
+      case N_GT:
+        out += " > ";
+        break;
+      case N_LTE:
+        out += " <= ";
+        break;
+      case N_GTE:
+        out += " >= ";
+        break;
+      case N_IN:
+        out += " & ";
+        break;
+      default:
+        die("Unhandled relational operator %s",
+            type_to_str(expression->children[1]->type).c_str());
+    }
+    out += parse_simple_expression(expression->children[2]);
+  } else
+    out += parse_simple_expression(expression->children[0]);
+}
+
+static std::string parse_simple_expression(ast_node *simple_expression)
+{
+  std::string out = "";
+  ast_node *term_list = simple_expression;
+  if (term_list->data.size())
+    out += term_list->data;
+  out += parse_term_list(term_list);
+}
+
+static std::string parse_term_list(ast_node *term_list)
+{
+  std::string out = "";
+  for (size_t i = 0; i < term_list->children.size(); i++) {
+    ast_node *factor_list_or_adding_operator = term_list->children[i];
+    if (factor_list_or_adding_operator->type == N_FACTOR_LIST)
+      out += parse_factor_list(factor_list_or_adding_operator);
+    else
+      switch (factor_list_or_adding_operator->type) {
+        case N_PLUS:
+          out += "+";
+          break;
+        case N_MINUS:
+          out += "-";
+          break;
+        case N_OR:
+          out += "|";
+          break;
+        default:
+          die("Unhandled operator %s",
+              type_to_str(factor_list_or_adding_operator->type).c_str());
+      }
+  }
+  return out;
+}
+
+static std::string parse_factor_list(ast_node *factor_list)
+{
+  std::string out = "";
+  for (size_t i = 0; i < factor_list->children.size(); i++) {
+    ast_node *factor_or_multiplying_operator = factor_list->children[i];
+    out += parse_factor_or_mult_operator(factor_or_multiplying_operator);
+  }
+  return out;
+}
+
+static std::string parse_factor_or_mult_operator(ast_node
+    *factor_or_multiplying_operator)
+{
+  std::string out = "";
+  switch (factor_or_multiplying_operator->type) {
+    case N_FACTOR:
+      out += parse_variable_access(factor_or_multiplying_operator->children[0]);
+      break;
+    case N_UNSIGNED_CONSTANT_NUMBER:
+      out += factor_or_multiplying_operator->data;
+      break;
+    case N_UNSIGNED_CONSTANT_STRING:
+      out += "\"" + factor_or_multiplying_operator->data + "\"";
+      break;
+    case N_UNSIGNED_CONSTANT_NIL:
+      out += "NULL";
+      break;
+    case N_FACTOR_FUNC_DESIGNATOR: {
+      ast_node *function_designator =
+        factor_or_multiplying_operator->children[0];
+      out += function_designator->data + "(";
+      for (size_t i = 0; i < function_designator->children[0]->children.size();
+          i++) {
+        ast_node *actual_parameter =
+          function_designator->children[0]->children[i];
+        // if (actual_parameter->children.size() == 1)
+        out += parse_expression(actual_parameter->children[0]);
+        if (i != function_designator->children[0]->children.size() - 1)
+          out += ", ";
+      }
+      out += ")";
+      break;
+    }
+    case N_FACTOR_SET_CONS: {
+      ast_node *set_constructor = factor_or_multiplying_operator->children[0],
+        *member_designator_list = set_constructor->children[0];
+      for (size_t i = 0; i < member_designator_list->children.size(); i++) {
+        ast_node *member_designator = member_designator_list->children[i];
+        if (member_designator->children.size() == 2)
+          out += "set(" + parse_expression(member_designator->children[0]) + ","
+            + parse_expression(member_designator->children[1]) + ")";
+        else
+          out += parse_expression(member_designator->children[0]);
+        if (i != member_designator_list->children.size() - 1)
+          out += " + ";
+      }
+      break;
+    }
+    case N_FACTOR_PARENS_EXPRESSION:
+      out += "(";
+      out += parse_expression(factor_or_multiplying_operator->children[0]);
+      out += ")";
+      break;
+    case N_FACTOR_NOT_FACTOR:
+      out += "!(";
+      out += parse_factor_or_mult_operator(factor_or_multiplying_operator
+          ->children[0]);
+      out += ")";
+      break;
+    case N_ASTERISK:
+      out += "*";
+      break;
+    case N_SLASH:
+      out += "/";
+      break;
+    case N_DIV:
+      out += "/";
+      break;
+    case N_MOD:
+      out += "%";
+      break;
+    case N_AND:
+      out += "&";
+      break;
+    default:
+      die("Unhandled factor or operator \"%s\"",
+          type_to_str(factor_or_multiplying_operator->type).c_str());
+      break;
+  }
+  return out;
 }
 
 static void write(const char *format, ...)

@@ -64,6 +64,19 @@ struct set {
     result.sort_and_uniq();
     return result;
   }
+  friend const set operator+(set lhs, const int& rhs) {
+    // union
+    set result;
+    if (lhs.size + 1 > 1024)
+      result.size_error();
+    result.size = lhs.size + 1;
+    int w = 0, e;
+    for (e = 0; e < lhs.size; e++)
+      result.elements[w++] = lhs.elements[e];
+    result.elements[w++] = rhs;
+    result.sort_and_uniq();
+    return result;
+  }
   friend const set operator-(set lhs, const set& rhs) {
     // difference
     set result;
@@ -140,9 +153,10 @@ struct set {
         elements[w++] = elements[i];
     size = w;
   }
-  bool in(int element) {
-    for (int i = 0; i < size; i++)
-      if (elements[i] == element)
+  friend bool operator&(set lhs, const int& element) {
+    // in
+    for (int i = 0; i < lhs.size; i++)
+      if (lhs.elements[i] == element)
         return true;
     return false;
   }
@@ -196,9 +210,11 @@ struct string
     data = new char[length + 1];
     strncpy(data, str.data, length);
   }
+  /*
   void swap(string& other) {
     std::swap(other.data, data);
   }
+  */
   string& operator=(const char *str) {
     delete [] data;
     length = strlen(str);
