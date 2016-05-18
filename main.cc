@@ -27,8 +27,8 @@ int main(int argc, char **argv)
 
   yyparse();
 
-  // puts("");
-  // print_ast(root);
+  puts("");
+  print_ast(root);
 
   std::string code = "";
   generate_code(root, &code);

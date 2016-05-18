@@ -226,14 +226,14 @@ static void write_block(block *b, bool root)
 {
   if (root) {
     /*
-    writeln("#include \"p2c2stdlib.h\"");
-    writeln("");
-    */
+       writeln("#include \"p2c2stdlib.h\"");
+       writeln("");
+       */
   }
-    write_block_constants(b);
-    write_block_variables(b);
-    write_block_functions(b, root);
-    write_block_statements(b);
+  write_block_constants(b);
+  write_block_variables(b);
+  write_block_functions(b, root);
+  write_block_statements(b);
 }
 
 static void write_block_constants(block *b)
@@ -642,6 +642,7 @@ static void write_block_statements(block *b)
 
 static void write_statement(ast_node *statement, block *b)
 {
+  printf("writing statement type %s\n", type_to_str(statement->type).c_str());
   if (statement->type == N_LABELLED_STATEMENT) {
     std::string label = statement->data;
     bool found = false;
@@ -670,6 +671,7 @@ static void write_statement(ast_node *statement, block *b)
       out += parse_expression(rhs);
       out += ";";
       writeln("%s", out.c_str());
+      printf("parsed ass: %s\n", out.c_str());
       break;
     }
     case N_PROC_OR_FUNC_STATEMENT: {
@@ -696,17 +698,22 @@ static void write_statement(ast_node *statement, block *b)
     case N_STATEMENT_PART: {
       writeln("{");
       indent++;
-      write_block_statements(b);
+      for (ast_node *cstatement : statement->children)
+        write_statement(cstatement, b);
       indent--;
       writeln("}");
       break;
     }
     case N_IF: {
-      ast_node *if_then = statement->children[0];
-      writeln("if (%s)", parse_expression(if_then->children[0]).c_str());
+      writeln("if (%s)", parse_expression(statement->children[0]).c_str());
       indent++;
-      write_statement(if_then->children[1], b);
+      write_statement(statement->children[1], b);
       indent--;
+      if (statement->children.size() == 2) {
+        writeln("else");
+        write_statement(statement->children[2], b);
+      }
+      puts("wrote if");
       break;
     }
     case N_CASE: {
@@ -726,7 +733,9 @@ static void write_statement(ast_node *statement, block *b)
     case N_WHILE: {
       writeln("while (%s)", parse_expression(statement->children[0]).c_str());
       indent++;
+      puts("begin");
       write_statement(statement->children[1], b);
+      puts("end");
       indent--;
       break;
     }
@@ -793,6 +802,7 @@ static std::string parse_expression(ast_node *expression)
 {
   std::string out = "";
   if (expression->children.size() == 3) {
+    puts("ye expre 3");
     out += parse_simple_expression(expression->children[0]);
     switch (expression->children[1]->type) {
       case N_EQUAL:
@@ -821,8 +831,10 @@ static std::string parse_expression(ast_node *expression)
             type_to_str(expression->children[1]->type).c_str());
     }
     out += parse_simple_expression(expression->children[2]);
-  } else
+  } else {
+    puts("o expr 1");
     out += parse_simple_expression(expression->children[0]);
+  }
   return out;
 }
 
@@ -843,6 +855,8 @@ static std::string parse_term_list(ast_node *term_list)
     ast_node *factor_list_or_adding_operator = term_list->children[i];
     if (factor_list_or_adding_operator->type == N_FACTOR_LIST)
       out += parse_factor_list(factor_list_or_adding_operator);
+    else if (factor_list_or_adding_operator->type == N_FACTOR)
+      out += parse_factor_or_mult_operator(factor_list_or_adding_operator);
     else
       switch (factor_list_or_adding_operator->type) {
         case N_PLUS:
