@@ -624,7 +624,8 @@ static void write_block_functions(block *b, bool root)
     if (decl.forward)
       writeln(";");
     else {
-      writeln(" {");
+      writeln("");
+      writeln("{");
       indent++;
       write_block(decl.body, false);
       indent--;
@@ -677,6 +678,7 @@ static void write_statement(ast_node *statement, block *b)
     case N_PROC_OR_FUNC_STATEMENT: {
       out += parse_function_designator(statement->children[0]) + ";";
       writeln("%s", out.c_str());
+      printf("pares func: %s\n", out.c_str());
       break;
     }
     case N_PROC_FUNC_OR_VARIABLE: {
@@ -696,22 +698,27 @@ static void write_statement(ast_node *statement, block *b)
       break;
     }
     case N_STATEMENT_PART: {
+      indent--;
       writeln("{");
       indent++;
       for (ast_node *cstatement : statement->children)
         write_statement(cstatement, b);
       indent--;
       writeln("}");
+      indent++;
       break;
     }
     case N_IF: {
       writeln("if (%s)", parse_expression(statement->children[0]).c_str());
+      printf("if hed (%s)\n", parse_expression(statement->children[0]).c_str());
       indent++;
       write_statement(statement->children[1], b);
       indent--;
-      if (statement->children.size() == 2) {
+      if (statement->children.size() == 3) {
         writeln("else");
+        indent++;
         write_statement(statement->children[2], b);
+        indent--;
       }
       puts("wrote if");
       break;
@@ -721,7 +728,8 @@ static void write_statement(ast_node *statement, block *b)
       break;
     }
     case N_REPEAT: {
-      writeln("do {");
+      writeln("do");
+      writeln("{");
       indent++;
       for (ast_node *rstatement : statement->children[0]->children)
         write_statement(rstatement, b);
@@ -733,9 +741,7 @@ static void write_statement(ast_node *statement, block *b)
     case N_WHILE: {
       writeln("while (%s)", parse_expression(statement->children[0]).c_str());
       indent++;
-      puts("begin");
       write_statement(statement->children[1], b);
-      puts("end");
       indent--;
       break;
     }
@@ -745,7 +751,9 @@ static void write_statement(ast_node *statement, block *b)
           statement->data.c_str(),
           parse_expression(statement->children[1]).c_str(),
           statement->data.c_str());
+      indent++;
       write_statement(statement->children[2], b);
+      indent--;
       break;
     }
     case N_FOR_DOWNTO: {
@@ -754,7 +762,9 @@ static void write_statement(ast_node *statement, block *b)
           statement->data.c_str(),
           parse_expression(statement->children[1]).c_str(),
           statement->data.c_str());
+      indent++;
       write_statement(statement->children[2], b);
+      indent--;
       break;
     }
     case N_WITH: {
@@ -774,22 +784,24 @@ static std::string parse_variable_access(ast_node *va)
       out += va->data;
       break;
     case N_VARIABLE_ACCESS_ARRAY_ACCESS: {
+      out += parse_variable_access(va->children[0]);
       ast_node *index_expression_list = va->children[1];
       for (size_t i = 0; i < index_expression_list->children.size();
           i++) {
         ast_node *expression = index_expression_list->children[i];
-        std::string idxel = "[" + parse_expression(expression) + "]";
+        out += "[" + parse_expression(expression) + "]";
       }
-      out += parse_variable_access(va->children[0]);
       break;
     }
     case N_VARIABLE_ACCESS_FIELD_DESIGNATOR:
       out += va->data;
+      out += ".";
       out += parse_variable_access(va->children[0]);
       break;
     case N_VARIABLE_ACCESS_BUFFER_VARIABLE:
-      out += "*";
+      out += "(*";
       out += parse_variable_access(va->children[0]);
+      out += ")";
       break;
     default:
       die("Undhandled variable access type \"%s\"",

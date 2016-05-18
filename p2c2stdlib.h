@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define maxint INT_MAX
 #define minint INT_MIN
@@ -253,4 +254,16 @@ struct string
 };
 
 #endif
+
+double sqr(double x) {
+  return x * x;
+}
+
+double ln(double x) {
+  return log(x);
+}
+
+double arctan(double x) {
+  return atan(x);
+}
 
