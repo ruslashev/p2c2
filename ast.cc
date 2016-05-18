@@ -134,7 +134,8 @@ std::string type_to_str(node_type type)
     { N_WITH, "N_WITH" },
     { N_RECORD_VARIABLE_LIST, "N_RECORD_VARIABLE_LIST" },
     { N_FACTOR_SET_CONS, "N_FACTOR_SET_CONS" },
-    { N_FACTOR_FUNC_DESIGNATOR, "N_FACTOR_FUNC_DESIGNATOR" }
+    { N_FACTOR_FUNC_DESIGNATOR, "N_FACTOR_FUNC_DESIGNATOR" },
+    { N_LABELLED_STATEMENT, "N_LABELLED_STATEMENT" }
   };
   if (strings.count(type))
     return strings.at(type);

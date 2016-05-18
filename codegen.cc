@@ -51,6 +51,7 @@ static std::string type_denoter_to_str(ast_node *type_denoter, block *b,
     std::string var_name, bool *allow_merged_decl, bool full_decl);
 static void write_block_functions(block *b, bool root);
 static void write_block_statements(block *b);
+static void write_statement(ast_node *statement, block *b);
 static std::string parse_variable_access(ast_node *va);
 static std::string parse_expression(ast_node *expression);
 static std::string parse_simple_expression(ast_node *simple_expression);
@@ -58,6 +59,7 @@ static std::string parse_term_list(ast_node *term_list);
 static std::string parse_factor_list(ast_node *factor_list);
 static std::string parse_factor_or_mult_operator(ast_node
     *factor_or_multiplying_operator);
+static std::string parse_function_designator(ast_node *function_designator);
 static void write(const char *format, ...);
 static void writeln(const char *format, ...);
 
@@ -634,59 +636,124 @@ static void write_block_functions(block *b, bool root)
 static void write_block_statements(block *b)
 {
   for (ast_node *statement : b->statements) {
+    write_statement(statement, b);
+  }
+}
+
+static void write_statement(ast_node *statement, block *b)
+{
+  if (statement->type == N_LABELLED_STATEMENT) {
     std::string label = statement->data;
-    if (label.size()) {
+    bool found = false;
+    for (size_t i = 0; i < b->valid_labels.size() && !found; i++) {
+      if (b->valid_labels[i] == label)
+        found = true;
+    }
+    if (!found)
+      die("Undeclared label %s", label.c_str());
+    int indentcpy = indent;
+    indent = 0;
+    if (!line_start)
+      writeln("");
+    write("%s: ", label.c_str());
+    indent = indentcpy;
+    statement = statement->children[0];
+  }
+  std::string out = "";
+  switch (statement->type) {
+    case N_EMPTY_STATEMENT:
+      break;
+    case N_ASSIGNMENT_STATEMENT: {
+      ast_node *lhs = statement->children[0], *rhs = statement->children[1];
+      out += parse_variable_access(lhs);
+      out += " = ";
+      out += parse_expression(rhs);
+      out += ";";
+      writeln("%s", out.c_str());
+      break;
+    }
+    case N_PROC_OR_FUNC_STATEMENT: {
+      out += parse_function_designator(statement->children[0]) + ";";
+      writeln("%s", out.c_str());
+      break;
+    }
+    case N_PROC_FUNC_OR_VARIABLE: {
       bool found = false;
-      for (std::string &vl : b->valid_labels)
-        if (vl == label)
+      for (size_t i = 0; i < b->func_decls.size() && !found; i++)
+        if (b->func_decls[i].name == statement->data)
           found = true;
-      if (!found)
-        die("Undeclared label %s", label.c_str());
-      writeln("%s:", label.c_str());
+      out += statement->data;
+      if (found)
+        out += "()";
+      out += ";";
+      writeln("%s", out.c_str());
+      break;
     }
-    switch (statement->type) {
-      case N_EMPTY_STATEMENT:
-        break;
-      case N_ASSIGNMENT_STATEMENT: {
-        ast_node *va = statement->children[0], *rhs = statement->children[1];
-        std::string out = "";
-        out += parse_variable_access(va);
-        break;
-      }
-      case N_PROC_OR_FUNC_STATEMENT: {
-        break;
-      }
-      case N_PROC_FUNC_OR_VARIABLE: {
-        break;
-      }
-      case N_GOTO: {
-        break;
-      }
-      case N_STATEMENT_PART: {
-        break;
-      }
-      case N_IF: {
-        break;
-      }
-      case N_CASE: {
-        break;
-      }
-      case N_REPEAT: {
-        break;
-      }
-      case N_WHILE: {
-        break;
-      }
-      case N_FOR_TO: {
-        break;
-      }
-      case N_FOR_DOWNTO: {
-        break;
-      }
-      case N_WITH: {
-        break;
-      }
+    case N_GOTO: {
+      writeln("goto %s;", statement->data.c_str());
+      break;
     }
+    case N_STATEMENT_PART: {
+      writeln("{");
+      indent++;
+      write_block_statements(b);
+      indent--;
+      writeln("}");
+      break;
+    }
+    case N_IF: {
+      ast_node *if_then = statement->children[0];
+      writeln("if (%s)", parse_expression(if_then->children[0]).c_str());
+      indent++;
+      write_statement(if_then->children[1], b);
+      indent--;
+      break;
+    }
+    case N_CASE: {
+      writeln("case");
+      break;
+    }
+    case N_REPEAT: {
+      writeln("do {");
+      indent++;
+      for (ast_node *rstatement : statement->children[0]->children)
+        write_statement(rstatement, b);
+      indent--;
+      writeln("} while (!(%s));",
+          parse_expression(statement->children[1]).c_str());
+      break;
+    }
+    case N_WHILE: {
+      writeln("while (%s)", parse_expression(statement->children[0]).c_str());
+      indent++;
+      write_statement(statement->children[1], b);
+      indent--;
+      break;
+    }
+    case N_FOR_TO: {
+      writeln("for (%s = %s; %s <= %s; %s++)", statement->data.c_str(),
+          parse_expression(statement->children[0]).c_str(),
+          statement->data.c_str(),
+          parse_expression(statement->children[1]).c_str(),
+          statement->data.c_str());
+      write_statement(statement->children[2], b);
+      break;
+    }
+    case N_FOR_DOWNTO: {
+      writeln("for (%s = %s; %s >= %s; %s--)", statement->data.c_str(),
+          parse_expression(statement->children[0]).c_str(),
+          statement->data.c_str(),
+          parse_expression(statement->children[1]).c_str(),
+          statement->data.c_str());
+      write_statement(statement->children[2], b);
+      break;
+    }
+    case N_WITH: {
+      break;
+    }
+    default:
+      die("Undhandled statement type \"%s\"",
+          type_to_str(statement->type).c_str());
   }
 }
 
@@ -704,14 +771,21 @@ static std::string parse_variable_access(ast_node *va)
         ast_node *expression = index_expression_list->children[i];
         std::string idxel = "[" + parse_expression(expression) + "]";
       }
+      out += parse_variable_access(va->children[0]);
       break;
     }
     case N_VARIABLE_ACCESS_FIELD_DESIGNATOR:
+      out += va->data;
+      out += parse_variable_access(va->children[0]);
       break;
     case N_VARIABLE_ACCESS_BUFFER_VARIABLE:
+      out += "*";
+      out += parse_variable_access(va->children[0]);
       break;
+    default:
+      die("Undhandled variable access type \"%s\"",
+          type_to_str(va->type).c_str());
   }
-
   return out;
 }
 
@@ -749,6 +823,7 @@ static std::string parse_expression(ast_node *expression)
     out += parse_simple_expression(expression->children[2]);
   } else
     out += parse_simple_expression(expression->children[0]);
+  return out;
 }
 
 static std::string parse_simple_expression(ast_node *simple_expression)
@@ -758,6 +833,7 @@ static std::string parse_simple_expression(ast_node *simple_expression)
   if (term_list->data.size())
     out += term_list->data;
   out += parse_term_list(term_list);
+  return out;
 }
 
 static std::string parse_term_list(ast_node *term_list)
@@ -770,13 +846,13 @@ static std::string parse_term_list(ast_node *term_list)
     else
       switch (factor_list_or_adding_operator->type) {
         case N_PLUS:
-          out += "+";
+          out += " + ";
           break;
         case N_MINUS:
-          out += "-";
+          out += " - ";
           break;
         case N_OR:
-          out += "|";
+          out += " || ";
           break;
         default:
           die("Unhandled operator %s",
@@ -816,17 +892,7 @@ static std::string parse_factor_or_mult_operator(ast_node
     case N_FACTOR_FUNC_DESIGNATOR: {
       ast_node *function_designator =
         factor_or_multiplying_operator->children[0];
-      out += function_designator->data + "(";
-      for (size_t i = 0; i < function_designator->children[0]->children.size();
-          i++) {
-        ast_node *actual_parameter =
-          function_designator->children[0]->children[i];
-        // if (actual_parameter->children.size() == 1)
-        out += parse_expression(actual_parameter->children[0]);
-        if (i != function_designator->children[0]->children.size() - 1)
-          out += ", ";
-      }
-      out += ")";
+      out += parse_function_designator(function_designator);
       break;
     }
     case N_FACTOR_SET_CONS: {
@@ -856,25 +922,42 @@ static std::string parse_factor_or_mult_operator(ast_node
       out += ")";
       break;
     case N_ASTERISK:
-      out += "*";
+      out += " * ";
       break;
     case N_SLASH:
-      out += "/";
+      out += " / ";
       break;
     case N_DIV:
-      out += "/";
+      out += " / ";
       break;
     case N_MOD:
-      out += "%";
+      out += " % ";
       break;
     case N_AND:
-      out += "&";
+      out += " && ";
       break;
     default:
       die("Unhandled factor or operator \"%s\"",
           type_to_str(factor_or_multiplying_operator->type).c_str());
       break;
   }
+  return out;
+}
+
+static std::string parse_function_designator(ast_node *function_designator)
+{
+  std::string out = "";
+  out += function_designator->data + "(";
+  for (size_t i = 0; i < function_designator->children[0]->children.size();
+      i++) {
+    ast_node *actual_parameter =
+      function_designator->children[0]->children[i];
+    // if (actual_parameter->children.size() == 1)
+    out += parse_expression(actual_parameter->children[0]);
+    if (i != function_designator->children[0]->children.size() - 1)
+      out += ", ";
+  }
+  out += ")";
   return out;
 }
 

@@ -610,13 +610,15 @@ statement_list: statement_list SEMICOLON statement { $$->add_child($3); }
               };
 statement: label COLON simple_statement
          {
-           $$ = $3;
+           $$ = make_node(N_LABELLED_STATEMENT);
            $$->data = *($1);
+           $$->add_child($3);
          }
          | label COLON structured_statement
          {
-           $$ = $3;
+           $$ = make_node(N_LABELLED_STATEMENT);
            $$->data = *($1);
+           $$->add_child($3);
          }
          | simple_statement { $$ = $1; }
          | structured_statement { $$ = $1; };
@@ -627,11 +629,10 @@ simple_statement: empty { $$ = make_node(N_EMPTY_STATEMENT); }
                   $$->add_child($1);
                   $$->add_child($3);
                 }
-                | identifier actual_parameter_list
+                | function_designator
                 {
-                  $$ = $2;
-                  $$->type = N_PROC_OR_FUNC_STATEMENT;
-                  $$->data = *($1);
+                  $$ = make_node(N_PROC_OR_FUNC_STATEMENT);
+                  $$->add_child($1);
                 }
                 | identifier
                 {

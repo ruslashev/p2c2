@@ -210,11 +210,6 @@ struct string
     data = new char[length + 1];
     strncpy(data, str.data, length);
   }
-  /*
-  void swap(string& other) {
-    std::swap(other.data, data);
-  }
-  */
   string& operator=(const char *str) {
     delete [] data;
     length = strlen(str);
@@ -245,6 +240,15 @@ struct string
   }
   char* c_str() {
     return data;
+  }
+  friend void readstr(string &str) {
+    char buffer[3 * 1024];
+    fgets(buffer, 3 * 1024, stdin);
+    buffer[str.length - 1] = 0;
+    delete [] str.data;
+    str.length = strlen(buffer);
+    str.data = new char[str.length + 1];
+    strncpy(str.data, buffer, str.length);
   }
 };
 
