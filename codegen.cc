@@ -37,6 +37,7 @@ struct block {
   std::vector<std::tuple<std::string, int, int>> init_sets;
   std::vector<std::vector<std::string>> enums;
   std::vector<std::vector<ast_node*>> records;
+  std::vector<std::pair<std::string, std::string>> decl_vars;
   block *prev;
   block() : prev(nullptr) {};
 };
@@ -225,15 +226,26 @@ static void parse_formal_parameter_list(ast_node *formal_parameter_list,
 static void write_block(block *b, bool root)
 {
   if (root) {
-    /*
-       writeln("#include \"p2c2stdlib.h\"");
-       writeln("");
-       */
+    writeln("#include \"p2c2stdlib.h\"");
+    writeln("");
+
+    write_block_constants(b);
+    write_block_variables(b);
+    write_block_functions(b, root);
+
+    writeln("int main()");
+    writeln("{");
+    indent++;
+    write_block_statements(b);
+    writeln("return 0;");
+    indent--;
+    writeln("}");
+  } else {
+    write_block_constants(b);
+    write_block_variables(b);
+    write_block_functions(b, root);
+    write_block_statements(b);
   }
-  write_block_constants(b);
-  write_block_variables(b);
-  write_block_functions(b, root);
-  write_block_statements(b);
 }
 
 static void write_block_constants(block *b)
@@ -271,14 +283,18 @@ static void write_block_variables(block *b)
     std::string type_denoter_str = type_denoter_to_str(type_denoter, b,
         names[0], &allow_merged_decl, true);
     write("%s ", type_denoter_str.c_str());
-    if (allow_merged_decl)
+    if (allow_merged_decl) {
       writeln("%s;", join(names, ", ").c_str());
-    else {
+      for (std::string &name : names)
+        b->decl_vars.push_back(std::make_pair(type_denoter_str, name));
+    } else {
       std::string pointers = "";
       for (size_t i = 0; i < names.size() - 1; i++)
         pointers += "*" + names[i] + ", ";
       pointers += "*" + names[names.size() - 1] + ";";
       writeln("%s", pointers.c_str());
+      for (std::string &name : names)
+        b->decl_vars.push_back(std::make_pair(type_denoter_str + "*", name));
     }
   }
   if (b->var_decls.size())
@@ -643,7 +659,6 @@ static void write_block_statements(block *b)
 
 static void write_statement(ast_node *statement, block *b)
 {
-  printf("writing statement type %s\n", type_to_str(statement->type).c_str());
   if (statement->type == N_LABELLED_STATEMENT) {
     std::string label = statement->data;
     bool found = false;
@@ -672,19 +687,23 @@ static void write_statement(ast_node *statement, block *b)
       out += parse_expression(rhs);
       out += ";";
       writeln("%s", out.c_str());
-      printf("parsed ass: %s\n", out.c_str());
       break;
     }
     case N_PROC_OR_FUNC_STATEMENT: {
       out += parse_function_designator(statement->children[0]) + ";";
       writeln("%s", out.c_str());
-      printf("pares func: %s\n", out.c_str());
       break;
     }
     case N_PROC_FUNC_OR_VARIABLE: {
       bool found = false;
       for (size_t i = 0; i < b->func_decls.size() && !found; i++)
         if (b->func_decls[i].name == statement->data)
+          found = true;
+      std::vector<std::string> builtin_funcs = {
+        "write", "writeln", "read", "readln"
+      };
+      for (size_t i = 0; i < builtin_funcs.size() && !found; i++)
+        if (builtin_funcs[i] == statement->data)
           found = true;
       out += statement->data;
       if (found)
@@ -710,7 +729,6 @@ static void write_statement(ast_node *statement, block *b)
     }
     case N_IF: {
       writeln("if (%s)", parse_expression(statement->children[0]).c_str());
-      printf("if hed (%s)\n", parse_expression(statement->children[0]).c_str());
       indent++;
       write_statement(statement->children[1], b);
       indent--;
@@ -720,7 +738,6 @@ static void write_statement(ast_node *statement, block *b)
         write_statement(statement->children[2], b);
         indent--;
       }
-      puts("wrote if");
       break;
     }
     case N_CASE: {
@@ -768,6 +785,7 @@ static void write_statement(ast_node *statement, block *b)
       break;
     }
     case N_WITH: {
+      die("With-statements are not supported in C");
       break;
     }
     default:
@@ -794,9 +812,9 @@ static std::string parse_variable_access(ast_node *va)
       break;
     }
     case N_VARIABLE_ACCESS_FIELD_DESIGNATOR:
-      out += va->data;
-      out += ".";
       out += parse_variable_access(va->children[0]);
+      out += ".";
+      out += va->data;
       break;
     case N_VARIABLE_ACCESS_BUFFER_VARIABLE:
       out += "(*";
@@ -977,9 +995,12 @@ static std::string parse_function_designator(ast_node *function_designator)
     ast_node *actual_parameter = function_designator->children[0]->children[i];
     if (function_designator->data == "write" || function_designator->data ==
         "writeln") {
-      if (actual_parameter->children.size() == 1)
+      if (i == 0)
+        out += std::to_string(function_designator->children[0]->children.size())
+          + ", ";
+      if (actual_parameter->children.size() == 1) {
         out += parse_expression(actual_parameter->children[0]);
-      else if (actual_parameter->children.size() == 2)
+      } else if (actual_parameter->children.size() == 2)
         out += "width_format(" + parse_expression(actual_parameter->children[0])
           + ", " + parse_expression(actual_parameter->children[1]) + ")";
       else if (actual_parameter->children.size() == 3)

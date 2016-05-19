@@ -32,7 +32,9 @@ int main(int argc, char **argv)
 
   std::string code = "";
   generate_code(root, &code);
-  printf("\nGenerated code: {{{\n%s}}}\n", code.c_str());
+  // printf("\nGenerated code: {{{\n%s}}}\n", code.c_str());
+
+  printf("%s\n", code.c_str());
 
   delete_ast();
   fclose(yyin);

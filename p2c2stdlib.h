@@ -323,3 +323,37 @@ char* full_format(double x, int w, int p) {
   return strdup(b);
 }
 
+void readi(int &x) {
+  scanf("%d", &x);
+}
+
+void reads(string &x) {
+  char b[256];
+  scanf("%d", b);
+  x = b;
+}
+
+void readf(double &x) {
+  scanf("%f", &x);
+}
+
+char* inttostr(int x) {
+  char b[256];
+  sprintf("%d", x);
+  return strdup(b);
+}
+
+char* ftostr(double x) {
+  char b[256];
+  sprintf("%f", x);
+  return strdup(b);
+}
+
+void new(void &x) {
+  malloc(x, sizeof(x));
+}
+
+void dispose(void &x) {
+  free(x);
+}
+

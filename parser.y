@@ -72,7 +72,6 @@ program: empty { yyerror("empty program"); }
            root = make_node(N_PROGRAM);
            root->add_child($1);
            root->add_child($2);
-           green(); puts("<parsed program>"); reset();
        };
 empty: ;
 optional_program_heading: program_heading SEMICOLON { $$ = $1; }
